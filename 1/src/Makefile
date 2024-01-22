@@ -1,8 +1,8 @@
 default:
-	g++ -o mapper mapper.cpp
-	g++ -o reducer reducer.cpp
+	@gcc -o mapper mapper.c
+	@g++ -o reducer reducer.cpp
+	@gcc -o combiner combiner.c
 
 clean:
-	rm mapper
-	rm reducer
+	@rm mapper reducer combiner
 

@@ -1,32 +1,36 @@
-#include <iostream>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
 #include <string>
 #include <vector>
 #include <tuple>
 
+#include "readline.h"
+
 using namespace std;
 
 int main() {
-	string buffer;
+	char buffer[32];
 	vector<tuple<int, string, int>> tuples;
 	
 	while(1) {
-		getline(cin, buffer);
-		
-		// If no chars then we're done
-		if (!buffer[0])
-			break;
-		
-		// find index of second comma
+		memset(buffer, 0, 32);
+		if (readline(buffer, 32) == 0 || !buffer[0] || buffer[0] == '\n') break;
+
+		string s(buffer);
+
+		// Get index of second comma
 		int index;
-		for (index = 7; index < buffer.length(); index++)
+		for (index = 7; index < s.length(); index++)
 			if (buffer[index] == ',') break;
-		
+
 		// Get id, topic and value
-		int id = stoi(buffer.substr(1,4));
-		string topic = buffer.substr(6, index-6);
-		int value = stoi(buffer.substr(index+1,buffer.length()-index+1));
-		
-		// Update tuples and clear flag
+		int id = stoi(s.substr(1,4));
+		string topic = s.substr(6, index-6);
+		int value = stoi(s.substr(index+1,s.length()-index+1));
+
+		// Updating tuples and clear flag
 		int flag = 1;
 		for (tuple<int,string,int> &t : tuples) {
 			if (id == get<0>(t)) {
@@ -36,14 +40,13 @@ int main() {
 				}
 			}
 		}
-		
+
 		// If flag not cleared make new tuple
 		if (flag) tuples.push_back(make_tuple(id, topic, value));
-		
 	}
-	
-	for (tuple<int,string,int> t : tuples) cout << "(" << get<0>(t) << "," << get<1>(t) << "," << get<2>(t) << ")" << endl;
-	cout << endl;
-	
+
+	for (tuple<int,string,int> t : tuples)
+		printf("(%d,%s,%d)\n", get<0>(t), get<1>(t).c_str(), get<2>(t));
+
 	return 0;
 }
