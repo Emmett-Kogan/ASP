@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "readline.h"
+#include "wrline.h"
 
 int main() {
 	int index, i;

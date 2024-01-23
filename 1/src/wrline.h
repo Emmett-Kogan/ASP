@@ -13,3 +13,9 @@ int readline(char *buffer, int max) {
 
 	return count;
 }
+
+int writeline(int pfd, char *buffer) {
+	int i = 0;
+	while (buffer[i]) write(pfd, buffer+(i++), 1);
+	return i;
+}

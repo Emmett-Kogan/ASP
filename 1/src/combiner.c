@@ -2,76 +2,73 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 
-#include "readline.h"
+#include "wrline.h"
 
 int main() {
-	
-	//test diff
-    // fork, exec, pipe. dup2
-    // Setup pipe
-    int pfd1[2];
-    int pfd2[2];
-    pid_t pid;
+    int pfd1[2], pfd2[2];
+    char buffer[32];
 
+    // Setup pipes
     if (pipe(pfd1) == -1) perror("Pipe 1");
     if (pipe(pfd2) == -1) perror("Pipe 2");
 
-    // Need 2 pipes
-    // Pipe 1 is written to by combiner and read by mapper
-    // Pipe 2 is written to by mapper and read by reducer
-    // And reducer prints to stdout
+    // Note that pipe one is written to by combiner and read by mapper
+    // And pipe two is written to by mapper and read by reducer
 
-
-
-
-
-
-    pid = fork();
-    if (pid == -1)
-        perror("Fork 1");
+    // Where mapper's fd 0 and 1 are pipes, and reducer's fd 0 is a pipe
 
     // Mapper
-    if (pid == 0) {
-        dup2(pfd1[1], 0);   // Read end of pipe 1 to stdin
-        dup2(pfd2[0], 1);   // Write end of pipe 2 to stdout
+    switch(fork()) {
+        case -1:
+            perror("fork 1");
+        case 0:
+            // Need to close write end of pipe 1 and read end of pipe 2
+            close(pfd1[1]);
+            close(pfd2[0]);
 
-        // Close unused ends of pipes
-        close(pfd1[0]);
-        close(pfd2[1]);
+            // Replace std in and out with the pipes
+            dup2(pfd1[0], 0);
+            dup2(pfd2[1], 1);
 
-        execl("mapper", "mapper",NULL);
-        exit(0);
+            // Run the mapper program and kill the child process
+            execl("mapper", "mapper", NULL);
+            exit(0);
     }
-
-    pid = fork();
-    if (pid == -1) perror("Fork 2");
 
     // Reducer
-    if (pid == 0) {
-        dup2(pfd2[1], 0);   // Read end of pipe 2 to stdin
+    switch(fork()) {
+        case -1:
+            perror("fork 2");
+        case 0:
+            // Need to close both ends of pipe 1 and the write end of pipe 2
+            close(pfd1[0]);
+            close(pfd1[1]);
+            close(pfd2[1]);
 
-        // Close unused ends of pipes
-        close(pfd1[0]);
-        close(pfd1[1]);
-        close(pfd2[0]);
+            // Replace std in with read end of pipe 2
+            dup2(pfd2[0], 0);
 
-        execl("reducer", "reducer", NULL);
-        exit(0);
+            // Run the reducer program and kill the child process
+            execl("reducer", "reducer", NULL);
+            exit(0);
     }
 
-    // Parent only
+    // Parent
 
-    // Close unused pipes
-    close(pfd1[1]);
+    // Close unused ends of pipes
+    close(pfd1[0]);
     close(pfd2[0]);
     close(pfd2[1]);
 
-    // Copy all input from stdin and put in on the read end of pipe1
-    char buffer[24];
-    int temp = readline(buffer,24);
-    while (temp > 0)
-        write(pfd1[0], buffer, temp);
+    // Take all input from stdin and write it to pipe 1 (to mapper)
+    while(1) {
+        if (readline(buffer, 24) == 0 || !buffer[0] || buffer[0] == '\n')
+            break;
+        writeline(pfd1[1], buffer);
+        memset(buffer,0,32);
+    }
 
     return 0;
 }

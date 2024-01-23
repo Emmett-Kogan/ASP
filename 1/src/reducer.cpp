@@ -6,7 +6,7 @@
 #include <vector>
 #include <tuple>
 
-#include "readline.h"
+#include "wrline.h"
 
 using namespace std;
 
@@ -46,7 +46,7 @@ int main() {
 	}
 
 	for (tuple<int,string,int> t : tuples)
-		printf("(%d,%s,%d)\n", get<0>(t), get<1>(t).c_str(), get<2>(t));
+		printf("(%04d,%s,%d)\n", get<0>(t), get<1>(t).c_str(), get<2>(t));
 
 	return 0;
 }
