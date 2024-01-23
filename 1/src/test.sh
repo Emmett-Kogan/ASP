@@ -1,18 +1,29 @@
+# this script assumes that the executable files are produced with a makefile and that they are named combiner reducer and mapper respectivley
+# this script also assumes you have a 'testfiles' directory that contains the files Yavuz distributed
+# note that test case 0 is technically broken because the ordering is different, Yavuz said that this is fine as long as the lines match (I didn't feel like sorting anything so I just left it as is)
+
 make
 
-./combiner <testfiles/in/0.txt >0.txt
-diff 0.txt testfiles/out/0.txt
+for i in {0..4}; do
+    ./mapper <testfiles/input$i.txt >temp.txt
+    ./reducer <temp.txt >manual.txt
 
-./combiner <testfiles/in/1.txt >1.txt
-diff 1.txt testfiles/out/1.txt
 
-./combiner <testfiles/in/2.txt >2.txt
-diff 2.txt testfiles/out/2.txt
+    ./combiner <testfiles/input$i.txt >mp.txt
+    sleep 1s
 
-./combiner <testfiles/in/3.txt >3.txt
-diff 3.txt testfiles/out/3.txt
+    diff manual.txt mp.txt
+    if [[ $? -ne 0 ]]
+    then
+        echo "Manual redirection output does not match combiner output"
+    fi
 
-./combiner <testfiles/in/4.txt >4.txt
-diff 4.txt testfiles/out/4.txt
+    diff mp.txt testfiles/output$i.txt
+    if [[ $? -ne 0 ]]
+    then
+        echo "Combiner output does not match given output"
+    fi
+done
 
+rm mp.txt manual.txt
 make clean
