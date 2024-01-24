@@ -10,9 +10,17 @@ for i in {0..4}; do
 
 
     ./combiner <testfiles/input$i.txt >mp.txt
-    sleep 1s
-
     diff manual.txt mp.txt
+
+    if [[ $? -ne 0 ]]
+    then
+        echo "Parent process terminated potentially terminated before children"
+    fi
+
+    sleep 1s
+    diff manual.txt mp.txt
+
+
     if [[ $? -ne 0 ]]
     then
         echo "Manual redirection output does not match combiner output"
@@ -25,5 +33,5 @@ for i in {0..4}; do
     fi
 done
 
-rm mp.txt manual.txt
+rm mp.txt manual.txt temp.txt
 make clean

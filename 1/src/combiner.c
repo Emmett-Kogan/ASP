@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "wrline.h"
 
 int main() {
+    int pid_mapper, pid_reducer, return_status;
     int pfd1[2], pfd2[2];
     char buffer[32];
 
@@ -20,7 +22,8 @@ int main() {
     // Where mapper's fd 0 and 1 are pipes, and reducer's fd 0 is a pipe
 
     // Mapper
-    switch(fork()) {
+    pid_mapper = fork();
+    switch(pid_mapper) {
         case -1:
             perror("fork 1");
         case 0:
@@ -34,11 +37,13 @@ int main() {
 
             // Run the mapper program and kill the child process
             execl("mapper", "mapper", NULL);
+            perror("mapper done");
             exit(0);
     }
 
     // Reducer
-    switch(fork()) {
+    pid_reducer = fork();
+    switch(pid_reducer) {
         case -1:
             perror("fork 2");
         case 0:
@@ -52,6 +57,7 @@ int main() {
 
             // Run the reducer program and kill the child process
             execl("reducer", "reducer", NULL);
+            perror("reducer done");
             exit(0);
     }
 
@@ -69,6 +75,9 @@ int main() {
         writeline(pfd1[1], buffer);
         memset(buffer,0,32);
     }
+    write(pfd1[1], "\n", 1);
+
+    while(wait(NULL) > 0);
 
     return 0;
 }

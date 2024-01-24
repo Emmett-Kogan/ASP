@@ -1,4 +1,5 @@
 #pragma once
+#include <unistd.h>
 
 int readline(char *buffer, int max) {
 	int count = 0;
