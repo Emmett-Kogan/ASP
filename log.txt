@@ -1,0 +1,3 @@
+Participation Log:
+    1/17 - asked about what expanding the VAS with fork meant and specifically what would the created child process do since it's VAS is a copy of the parents
+    1/22 - asked about synchronizing pipes
