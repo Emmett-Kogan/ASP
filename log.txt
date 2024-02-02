@@ -1,3 +1,8 @@
 Participation Log:
     1/17 - asked about what expanding the VAS with fork meant and specifically what would the created child process do since it's VAS is a copy of the parents
     1/22 - asked about synchronizing pipes
+    1/24 talked about what might happen to buffers in user space
+    1/25 - email exchange about assignment 1, order of the ouputs and quick question about the script I write
+    1/26 - spoke after class about whether the parent process should wait for its children to terminate before ending
+    1/29 - in class activity
+    2/2 - Talked about assignment 2 spec
