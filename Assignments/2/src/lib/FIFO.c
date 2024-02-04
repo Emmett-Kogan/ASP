@@ -1,3 +1,6 @@
+// Author: Emmett Kogan
+// Last modified: 2/4/24
+
 #include "FIFO.h"
 
 // Just needs to initialize each of the FIFO's variables

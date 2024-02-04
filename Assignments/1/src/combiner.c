@@ -1,3 +1,6 @@
+// Author: Emmett Kogan
+// Last modified: 2/4/24
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
