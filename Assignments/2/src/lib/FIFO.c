@@ -3,22 +3,17 @@
 
 #include "FIFO.h"
 
-// Just needs to initialize each of the FIFO's variables
-// Note that this doesn't validate the depth and entry_size as far as the upper bounds, I know malloc will do something weird (by allocating the specified number of bytes which will be very small), and to fix this I could just use calloc, but...idk if I want to use calloc
-
+// Initializes FIFO struct and relevant synchronization vars
 int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width) {
     f->depth = depth;
     f->width = width;
 
-    if (pthread_mutex_init(&f->lock, NULL))
-        perror("Pthread mutex init in FIFO");
-
-    if (sem_init(&f->count, 0, 0))
-        perror("Semaphore init in FIFO");
+    if (pthread_mutex_init(&f->rlock, NULL)) return -1;
+    if (pthread_mutex_init(&f->wlock, NULL)) return -1;
+    if (sem_init(&f->count, 0, 0)) return -1;
 
     f->buffer = malloc(depth*width);
-    if (!f->buffer)
-        perror("Malloc in FIFO");
+    if (!f->buffer) return -1;
 
     f->last = f->buffer + ((f->depth-1) * f->width);
     f->head = f->buffer;
@@ -27,37 +22,58 @@ int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width) {
     return 0;
 }
 
-// While pushing, should simply compare depth to value of semaphore, if they are
-// the same, then it should wait until the semaphore is less than the max value,
-// then push to the FIFO and return
 int FIFO_push(FIFO_t *f, void *data) {
     int count;
 
-    // Check if there is space to push88
-    if(sem_getvalue(&f->count, &count) || count >= f->depth) return -1;
+    // Pick up write lock and check if there is space to push to
+    pthread_mutex_lock(&f->wlock);
+    if(sem_getvalue(&f->count, &count) || count >= f->depth) {
+        pthread_mutex_unlock(&f->wlock);
+        return -1;
+    }
 
     // Update FIFO
     memcpy(f->tail, data, f->width);
     f->tail = (f->tail == f->last) ? f->buffer : f->tail+f->width;
     sem_post(&f->count);
 
+    // Release write lock
+    pthread_mutex_unlock(&f->wlock);
     return 0;
 }
 
-// When popping, should try to take the lock, if something else is reading it will block, otherwise we good. Once we have the lock we wait on the semaphore, and once we get past that we simply copy the data off the semaphore to the calling function's buffer
 int FIFO_pop(FIFO_t *f, void *data) {
-    // Pick up lock
-    pthread_mutex_lock(&f->lock);
+    // Pick up read lock
+    pthread_mutex_lock(&f->rlock);
 
-    // Wait on semaphore
+    // Wait for data to read
     sem_wait(&f->count);
 
     // Copy data from FIFO to data and advance head pointer
     memcpy(data, f->head, f->width);
     f->head = (f->head == f->last) ? f->buffer : f->head + f->width;
 
-
-    // Release lock
-    pthread_mutex_unlock(&f->lock);
+    // Release read lock
+    pthread_mutex_unlock(&f->rlock);
     return 0;
 }
+
+// Resets FIFO struct essentially to state before init was called
+int FIFO_clean(FIFO_t *f) {
+    f->depth = 0;
+    f->width = 0;
+
+    if (pthread_mutex_destroy(&f->rlock)) return -1;
+    if (pthread_mutex_destroy(&f->wlock)) return -1;
+    if (sem_destroy(&f->count)) return -1;
+    free(f->buffer);
+
+    f->buffer = NULL;
+    f->last = NULL;
+    f->head = NULL;
+    f->tail = NULL;
+
+    return 0;
+}
+
+
