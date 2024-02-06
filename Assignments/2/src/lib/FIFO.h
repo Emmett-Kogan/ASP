@@ -13,7 +13,7 @@
 
 typedef struct FIFO_t {
     uint32_t depth, width;
-    pthread_mutex_t rlock, wlock;
+    pthread_mutex_t lock;
     sem_t count;
     void *buffer;
     void *last, *head, *tail;
