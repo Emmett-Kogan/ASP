@@ -17,7 +17,7 @@ int main() {
 	char buffer[32];
 	vector<tuple<int, string, int>> tuples;
 	
-	while(1) {
+	while (1) {
 		memset(buffer, 0, 32);
 		if (readline(buffer, 32) == 0 || !buffer[0] || buffer[0] == '\n') break;
 

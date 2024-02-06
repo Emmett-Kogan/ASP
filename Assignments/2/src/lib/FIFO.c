@@ -95,12 +95,15 @@ lock:
 }
 
 // Resets FIFO struct essentially to state before init was called
+
+// What if this is called when the FIFO wasn't initialized, it would try to free(null)
+// So how can I tell if one of these is initialized... I could also just say that the behabior is undefined
 int FIFO_clean(FIFO_t *f)
 {
     f->depth = 0;
     f->width = 0;
 
-    free(f->buffer);
+    if (f->buffer) free(f->buffer);
 
     f->buffer = NULL;
     f->last = NULL;
