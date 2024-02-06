@@ -6,3 +6,4 @@ Participation Log:
     1/26 - spoke after class about whether the parent process should wait for its children to terminate before ending
     1/29 - in class activity
     2/2 - Talked about assignment 2 spec
+    2/6 - Asked about conditional variables for resource synchronization vs using something like a lock or semaphore. I didn't think I fully understood the lecture but now that I've had a chance to digest and to look at some other slides I think I get it a bit better now. I can see cases where conditional variables might be advantageos, but, at the same time it feels slightly more natural to just use a semaphore instead since, depending on the code structure, it may make more sense normally. Still really cool though, synchronization is one of my favorite topics :smile:
