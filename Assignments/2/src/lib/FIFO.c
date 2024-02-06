@@ -4,15 +4,20 @@
 #include "FIFO.h"
 
 // Initializes FIFO struct and relevant synchronization vars
-int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width) {
+int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width)
+{
     f->depth = depth;
     f->width = width;
 
-    if (pthread_mutex_init(&f->lock, NULL)) goto mutex;
-    if (sem_init(&f->count, 0, 0)) goto sem;
+    if (pthread_mutex_init(&f->lock, NULL))
+        goto mutex;
+
+    if (sem_init(&f->count, 0, 0))
+        goto sem;
 
     f->buffer = malloc(depth*width);
-    if (!f->buffer) goto malloc;
+    if (!f->buffer)
+        goto malloc;
 
     f->last = f->buffer + ((f->depth-1) * f->width);
     f->head = f->buffer;
@@ -28,23 +33,31 @@ mutex:
     return -1;
 }
 
-int FIFO_push(FIFO_t *f, void *data) {
+int FIFO_push(FIFO_t *f, void *data)
+{
     int count;
 
     // Pick up write lock and check if there is space to push to
-    if (pthread_mutex_lock(&f->lock)) goto lock;
-    if (sem_getvalue(&f->count, &count)) goto sem_getval;
+    if (pthread_mutex_lock(&f->lock))
+        goto lock;
+
+    if (sem_getvalue(&f->count, &count))
+        goto sem_getval;
 
     // If full release lock, on success return 1, otherwise return -1
-    if (count >= f->depth) return pthread_mutex_unlock(&f->lock) ? -1 : 1;
+    if (count >= f->depth)
+        return pthread_mutex_unlock(&f->lock) ? -1 : 1;
 
     // Update FIFO
     memcpy(f->tail, data, f->width);
     f->tail = (f->tail == f->last) ? f->buffer : f->tail+f->width;
-    if (sem_post(&f->count)) goto sem_post;
+    if (sem_post(&f->count))
+        goto sem_post;
 
     // Release write lock
-    if (pthread_mutex_unlock(&f->lock)) goto lock;
+    if (pthread_mutex_unlock(&f->lock))
+        goto lock;
+
     return 0;
 
 
@@ -55,19 +68,24 @@ lock:
     return -1;
 }
 
-int FIFO_pop(FIFO_t *f, void *data) {
+int FIFO_pop(FIFO_t *f, void *data)
+{
     // Pick up read lock
-    if (pthread_mutex_lock(&f->lock)) goto lock;
+    if (pthread_mutex_lock(&f->lock))
+        goto lock;
 
     // Wait for data to read
-    if (sem_wait(&f->count)) goto sem_wait;
+    if (sem_wait(&f->count))
+        goto sem_wait;
 
     // Copy data from FIFO to data and advance head pointer
     memcpy(data, f->head, f->width);
     f->head = (f->head == f->last) ? f->buffer : f->head + f->width;
 
     // Release read lock
-    if (pthread_mutex_unlock(&f->lock)) goto lock;
+    if (pthread_mutex_unlock(&f->lock))
+        goto lock;
+
     return 0;
 
 sem_wait:
@@ -77,7 +95,8 @@ lock:
 }
 
 // Resets FIFO struct essentially to state before init was called
-int FIFO_clean(FIFO_t *f) {
+int FIFO_clean(FIFO_t *f)
+{
     f->depth = 0;
     f->width = 0;
 
