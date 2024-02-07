@@ -1,46 +1,25 @@
-#include "FIFO.h"
-
-FIFO_t foo;
-
-static void *prod(void *arg) {
-    char *str = (char *) arg;
-    while(*str) FIFO_push(&foo, (void *) str++);
-    return NULL;
-
-}
-
-static void *cons(void *arg) {
-    char rah;
-    while(1) {
-        FIFO_pop(&foo, (void *) &rah);
-        printf("%c", rah);
-        if (!rah || rah == '\n') break;
-    }
-    return NULL;
-}
+#include <stdio.h>
+#include <string.h>
 
 int main() {
-    FIFO_init(&foo, 40, 1);
+    char buff[100];
 
-    pthread_t t1, t2;
-    void *res;
-    int s;
+    char *id, *topic, *value;
+    char *tmp = buff;
 
-    s = pthread_create(&t1, NULL, prod, "Hello, World!\n");
-    if (s != 0) perror("pthread_create 1");
+    scanf("%s", buff);
 
-    s = pthread_create(&t2, NULL, cons, NULL);
-    if (s != 0) perror("pthread_create 2");
+    const char del[4] = "(,)";
 
-    printf("Message from main()\n");
+    id = strtok_r(buff, del, &tmp);
+    topic = strtok_r(0, del, &tmp);
+    value = strtok_r(0, del, &tmp);
 
-    s = pthread_join(t1, &res);
-    if (s != 0) perror("pthread_join 1");
+    int l1 = 0;
+    while(topic[l1] != '\0') l1++;
 
-    s = pthread_join(t2, &res);
-    if (s != 0) perror("pthread_join 2");
-
-    printf("Threads returned\n");
+    printf("%s\n%s\n%s\n", id, topic, value);
+    printf("Length of topic = %d\n", l1);
 
     return 0;
 }

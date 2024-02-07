@@ -21,6 +21,7 @@ typedef struct FIFO_t {
 
 int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width);
 int FIFO_push(FIFO_t *f, void *data);
+int FIFO_push_force(FIFO_t *f, void *data);
 int FIFO_pop(FIFO_t *f, void *data);
 int FIFO_clean(FIFO_t *f);
 

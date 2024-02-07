@@ -1,5 +1,4 @@
-// Author: Emmett Kogan
-// Last modified: 2/4/24
+#pragma once
 
 #include <stdio.h>
 #include <unistd.h>
@@ -10,16 +9,18 @@
 #include <tuple>
 
 #include "wrline.h"
+#include "FIFO.h"
 
-using namespace std;
+extern "C" static void *reducer(void *args) {
+    char buffer[32];
+    vector<tuple<int, string, int>> tuples;
 
-int main() {
-	char buffer[32];
-	vector<tuple<int, string, int>> tuples;
-	
-	while (1) {
+	while(1) {
 		memset(buffer, 0, 32);
-		if (readline(buffer, 32) == 0 || !buffer[0] || buffer[0] == '\n') break;
+        FIFO_pop((FIFO_t *) args, buffer);
+
+        if (buffer[0] == '\n')
+            break;
 
 		string s(buffer);
 

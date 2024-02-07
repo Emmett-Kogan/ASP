@@ -68,6 +68,17 @@ lock:
     return -1;
 }
 
+// Simply does FIFO_push until there was a success or error
+int FIFO_push_force(FIFO_t *f, void *data) {
+    int ret;
+    do {
+        ret = FIFO_push(f, data);
+        if (ret < 0)
+            return -1;
+    } while (ret > 0);
+    return 0;
+}
+
 int FIFO_pop(FIFO_t *f, void *data)
 {
     // Pick up read lock
