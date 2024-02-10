@@ -3,10 +3,8 @@
 
 #include "lib/wrline.h"
 #include "lib/FIFO.h"
-#include "lib/thread.h"
+#include "lib/threads.h"
 #define MAX_STR_LEN 32
-
-static void *reducer(void *args);
 
 int main(int argc, char **argv)
 {
@@ -100,6 +98,10 @@ int main(int argc, char **argv)
             // Iterate to find first available fifo and update the fifo_map, and use that index
             i = 0;
             while (fifo_map[i] < 0) i++;
+
+            // Not enough Q's to provide a unique map, not certain if this is reachable or not
+            if (i == num_threads)
+                goto general_fail;
             fifo_map[i] = id;
         }
 
@@ -144,7 +146,3 @@ threads_malloc:
     return -1;
 }
 
-static void *reducer(void *args)
-{
-    return NULL;
-}
