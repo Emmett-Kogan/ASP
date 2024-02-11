@@ -1,5 +1,5 @@
 // Author: Emmett Kogan
-// Last modified: 2/4/24
+// Last modified: 2/11/24
 
 #include "FIFO.h"
 
@@ -37,9 +37,9 @@ int FIFO_push(FIFO_t *f, void *data)
 {
     int count;
 
-    // Pick up write lock and check if there is space to push to
-    if (pthread_mutex_lock(&f->lock))
-        goto lock;
+//     // Pick up write lock and check if there is space to push to
+//     if (pthread_mutex_lock(&f->lock))
+//         goto lock;
 
     if (sem_getvalue(&f->count, &count))
         goto sem_getval;
@@ -55,8 +55,8 @@ int FIFO_push(FIFO_t *f, void *data)
         goto sem_post;
 
     // Release write lock
-    if (pthread_mutex_unlock(&f->lock))
-        goto lock;
+//     if (pthread_mutex_unlock(&f->lock))
+//         goto lock;
 
     return 0;
 

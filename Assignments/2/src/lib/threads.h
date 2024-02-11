@@ -1,3 +1,6 @@
+// Author: Emmett Kogan
+// Last modified: 2/11/24
+
 #ifndef THREADS_H
 #define THREADS_H
 
@@ -9,7 +12,7 @@
 
 typedef struct tuple_t {
     int id;
-    char topic[32];
+    char topic[33];
     int value;
 } tuple_t;
 
@@ -19,12 +22,12 @@ typedef struct node_t {
 } node_t;
 
 static void *reducer(void *args) {
-    char buffer[32];
+    char buffer[33];
     node_t *head = NULL;
     int count = 0;
 
 	while(1) {
-		memset(buffer, 0, 32);
+		memset(buffer, 0, 33);
         FIFO_pop((FIFO_t *) args, buffer);
 
         if (buffer[0] == '\n')
@@ -43,15 +46,18 @@ static void *reducer(void *args) {
 
         // Traverse list and update node if matching topic found
         node_t *node = head;
-        int flag = 1, l1 = 0, l2 = 0;
+        int flag = 1, l1 = 0;
+        while (topic[l1]) l1++;
+
         while(node) {
             // Compare topic to node->data.topic
-
-            while (topic[l1]) l1++;
+            int l2 = 0;
             while (node->data.topic[l2]) l2++;
 
+            // printf("in: %s\tnode: %s\nl1: %d, l2: %d\n", topic, node->data.topic,l1,l2);
+
             // If topics match update node and clear flag
-            if (l1 == l2 && strncmp(topic, node->data.topic, l1)) {
+            if (l1 == l2 && !strncmp(topic, node->data.topic, l1)) {
                 node->data.value += value;
                 flag = 0;
                 break;
@@ -71,16 +77,16 @@ static void *reducer(void *args) {
             n->next = head;
             head = n;
         }
-	}
+    }
 
-	// Need to update this to traverse the LL
-	node_t *node = head;
+    // Need to update this to traverse the LL
+    node_t *node = head;
     while(node) {
         printf("(%04d,%s,%d)\n", node->data.id, node->data.topic, node->data.value);
         node = node->next;
     }
 
-	return 0;
+    return 0;
 }
 
 #endif

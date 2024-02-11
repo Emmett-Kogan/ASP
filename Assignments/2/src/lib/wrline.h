@@ -1,7 +1,9 @@
 // Author: Emmett Kogan
-// Last modified: 2/4/24
+// Last modified: 2/11/24
 
-#pragma once
+#ifndef WRLINE_H
+#define WRLINE_H
+
 #include <unistd.h>
 
 int readline(char *buffer, int max) {
@@ -23,3 +25,5 @@ int writeline(int pfd, char *buffer) {
 	while (buffer[i]) write(pfd, buffer+(i++), 1);
 	return i;
 }
+
+#endif
