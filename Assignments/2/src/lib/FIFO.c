@@ -89,6 +89,8 @@ int FIFO_pop(FIFO_t *f, void *data)
     if (sem_wait(&f->count))
         goto sem_wait;
 
+    // ** if blocked here
+
     // Copy data from FIFO to data and advance head pointer
     memcpy(data, f->head, f->width);
     f->head = (f->head == f->last) ? f->buffer : f->head + f->width;
