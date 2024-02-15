@@ -8,12 +8,15 @@ int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width)
 {
     f->depth = depth;
     f->width = width;
+    f->count = 0;
 
     if (pthread_mutex_init(&f->lock, NULL))
         goto mutex;
 
-    if (sem_init(&f->count, 0, 0))
-        goto sem;
+    if (pthread_cond_init(&f->full, NULL))
+        goto full;
+    if (pthread_cond_init(&f->empty, NULL))
+        goto empty;
 
     f->buffer = malloc(depth*width);
     if (!f->buffer)
@@ -25,9 +28,10 @@ int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width)
 
     return 0;
 
+empty:
+    pthread_cond_destroy(&f->full);
+full:
 malloc:
-    sem_destroy(&f->count);
-sem:
     pthread_mutex_destroy(&f->lock);
 mutex:
     return -1;
@@ -35,82 +39,63 @@ mutex:
 
 int FIFO_push(FIFO_t *f, void *data)
 {
-    int count;
+    // Pick up lock
+    if(pthread_mutex_lock(&f->lock))
+        goto mutex;
 
-//     // Pick up write lock and check if there is space to push to
-//     if (pthread_mutex_lock(&f->lock))
-//         goto lock;
-
-    if (sem_getvalue(&f->count, &count))
-        goto sem_getval;
-
-    // If full release lock, on success return 1, otherwise return -1
-    if (count >= f->depth)
-        return pthread_mutex_unlock(&f->lock) ? -1 : 1;
+    // If full wait on cond var
+    if (f->count == f->depth)
+        if (pthread_cond_wait(&f->full, &f->lock))
+            goto cond_wait;
 
     // Update FIFO
     memcpy(f->tail, data, f->width);
     f->tail = (f->tail == f->last) ? f->buffer : f->tail+f->width;
-    if (sem_post(&f->count))
-        goto sem_post;
+    f->count++;
 
-    // Release write lock
-//     if (pthread_mutex_unlock(&f->lock))
-//         goto lock;
+    // Release lock
+    if (pthread_mutex_unlock(&f->lock))
+        goto mutex;
 
-    return 0;
+    // Signal empty (this either does nothing or unblocks a consumer)
+    return pthread_cond_signal(&f->empty);
 
-
-sem_post:
-sem_getval:
+cond_wait:
     pthread_mutex_unlock(&f->lock);
-lock:
+mutex:
     return -1;
-}
-
-// Simply does FIFO_push until there was a success or error
-int FIFO_push_force(FIFO_t *f, void *data) {
-    int ret;
-    do {
-        ret = FIFO_push(f, data);
-        if (ret < 0)
-            return -1;
-    } while (ret > 0);
-    return 0;
 }
 
 int FIFO_pop(FIFO_t *f, void *data)
 {
-    // Pick up read lock
+    // Pick up lock
     if (pthread_mutex_lock(&f->lock))
-        goto lock;
+        goto mutex;
 
-    // Wait for data to read
-    if (sem_wait(&f->count))
-        goto sem_wait;
+    // If empty wait on cond var
+    if (f->count == 0)
+        if (pthread_cond_wait(&f->empty, &f->lock))
+            goto cond_wait;
 
-    // ** if blocked here
-
-    // Copy data from FIFO to data and advance head pointer
+    // Read data and update data structure
     memcpy(data, f->head, f->width);
     f->head = (f->head == f->last) ? f->buffer : f->head + f->width;
+    f->count--;
 
-    // Release read lock
+    // Release lock
     if (pthread_mutex_unlock(&f->lock))
-        goto lock;
+        goto mutex;
 
-    return 0;
+    // Signal full (either does nothing or unblocks a producer)
+    return pthread_cond_signal(&f->full);
 
-sem_wait:
+cond_wait:
     pthread_mutex_unlock(&f->lock);
-lock:
+mutex:
     return -1;
 }
 
 // Resets FIFO struct essentially to state before init was called
-
-// What if this is called when the FIFO wasn't initialized, it would try to free(null)
-// So how can I tell if one of these is initialized... I could also just say that the behabior is undefined
 int FIFO_clean(FIFO_t *f)
 {
     f->depth = 0;
@@ -122,10 +107,11 @@ int FIFO_clean(FIFO_t *f)
     f->last = NULL;
     f->head = NULL;
     f->tail = NULL;
+    f->count = 0;
 
     // This way all cleanup is attempted no matter what
-    int e = pthread_mutex_destroy(&f->lock);
-    return (sem_destroy(&f->count) || e) ? -1 : 0;
+    pthread_cond_destroy(&f->full);
+    pthread_cond_destroy(&f->empty);
+    return pthread_mutex_destroy(&f->lock);
 }
-
 

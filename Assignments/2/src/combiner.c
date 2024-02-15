@@ -35,7 +35,7 @@ int main(int argc, char **argv)
             // send a newline char to each buffer to signal no more data
             outbuff[0] = '\n';
             for (int i = 0; i < num_threads; i++)
-                FIFO_push_force(&fifos[i], outbuff);
+                FIFO_push(&fifos[i], outbuff);
             break;
         }
 
@@ -84,13 +84,15 @@ int main(int argc, char **argv)
             while (fifo_map[i] > 0) i++;
 
             // Not enough Q's to provide a unique map, not certain if this is reachable or not
-            if (i == num_threads)
+            if (i == num_threads) {
+                printf("Error: More users than threads\n");
                 return -1;
+            }
             fifo_map[i] = id;
         }
 
         // Send string the mapped fifo
-        FIFO_push_force(&fifos[i], outbuff);
+        FIFO_push(&fifos[i], outbuff);
 	}
 
     for (int i = 0; i < num_threads; i++) {

@@ -12,16 +12,15 @@
 #include <string.h>
 
 typedef struct FIFO_t {
-    uint32_t depth, width;
+    uint32_t depth, width, count;
     pthread_mutex_t lock;
-    sem_t count;
+    pthread_cond_t full, empty;
     void *buffer;
     void *last, *head, *tail;
 } FIFO_t;
 
 int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width);
 int FIFO_push(FIFO_t *f, void *data);
-int FIFO_push_force(FIFO_t *f, void *data);
 int FIFO_pop(FIFO_t *f, void *data);
 int FIFO_clean(FIFO_t *f);
 
