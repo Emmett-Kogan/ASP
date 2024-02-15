@@ -1,9 +1,8 @@
-# Assignment 1
+# Assignment 2
 ## Contributor(s)
-Emmett Kogan
+1. Emmett Kogan
 
-## TODO:
-1. Test FIFO struct and functions to make sure it actually works with just one process, then make a multithreaded test
-2. Dealing with the actual assignment as well lol
 ## Build instructions
-
+1. Run `make`, the `default` rule of the makefile builds the `combiner` executable, and the `clean` rule removes the executable.
+2. I also made a test script htat runs using the given testfiles. To run the given tests you can just run `./test.sh` which will run 
+all of the given testcases from assignment.

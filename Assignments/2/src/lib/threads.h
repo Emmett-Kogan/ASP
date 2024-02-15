@@ -26,8 +26,8 @@ static void *reducer(void *args) {
     node_t *head = NULL;
     int count = 0;
 
-	while(1) {
-		memset(buffer, 0, 33);
+    while(1) {
+        memset(buffer, 0, 33);
         FIFO_pop((FIFO_t *) args, buffer);
 
         if (buffer[0] == '\n')
@@ -53,8 +53,6 @@ static void *reducer(void *args) {
             // Compare topic to node->data.topic
             int l2 = 0;
             while (node->data.topic[l2]) l2++;
-
-            // printf("in: %s\tnode: %s\nl1: %d, l2: %d\n", topic, node->data.topic,l1,l2);
 
             // If topics match update node and clear flag
             if (l1 == l2 && !strncmp(topic, node->data.topic, l1)) {
@@ -86,7 +84,7 @@ static void *reducer(void *args) {
         node = node->next;
     }
 
-    return 0;
+    pthread_exit(0);
 }
 
 #endif
