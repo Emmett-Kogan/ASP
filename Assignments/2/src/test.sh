@@ -11,13 +11,21 @@ make
 
 for i in {0..4}; do
     for j in ${depths[@]}; do
-        ./combiner $j ${users[$i]} <testfiles/input$i.txt | sort > temp.txt
-        diff temp.txt testfiles/output$i.txt >/dev/null
+        ./combiner $j ${users[$i]} <testfiles/input$i.txt > temp.txt
+
         if [[ $? -ne 0 ]]; then
+            echo "Error occured"
+        fi
+
+        sort temp.txt > s.txt
+        diff s.txt testfiles/output$i.txt >/dev/null
+
+        if [[ $? -ne 0 ]]; then
+            cat temp.txt
             echo "Differences found on test $i with depth $j"
         fi
     done
 done
 
 make clean
-rm temp.txt
+rm temp.txt s.txt

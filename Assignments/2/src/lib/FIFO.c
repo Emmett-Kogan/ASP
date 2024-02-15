@@ -43,8 +43,8 @@ int FIFO_push(FIFO_t *f, void *data)
     if(pthread_mutex_lock(&f->lock))
         goto mutex;
 
-    // If full wait on cond var
-    if (f->count == f->depth)
+    // While full wait on cond var
+    while (f->count == f->depth)
         if (pthread_cond_wait(&f->full, &f->lock))
             goto cond_wait;
 
@@ -72,8 +72,8 @@ int FIFO_pop(FIFO_t *f, void *data)
     if (pthread_mutex_lock(&f->lock))
         goto mutex;
 
-    // If empty wait on cond var
-    if (f->count == 0)
+    // While empty wait on cond var
+    while (f->count == 0)
         if (pthread_cond_wait(&f->empty, &f->lock))
             goto cond_wait;
 
