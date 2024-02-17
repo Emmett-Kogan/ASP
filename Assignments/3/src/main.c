@@ -42,8 +42,18 @@ int main(int argc, char **argv)
         node_t *new_node = (node_t *) malloc(sizeof(node_t));
         new_node->id = id;
         new_node->balance = balance;
-        new_node->next = head;
-        head = new_node;
+        new_node->next = NULL;
+
+        if (head) {
+            node_t *n = head;
+            while (n->next)
+                n = n->next;
+            n->next = new_node;
+
+        } else {
+            head = new_node;
+        }
+
         accounts++;
     }
 
