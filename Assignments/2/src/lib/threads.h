@@ -78,10 +78,12 @@ static void *reducer(void *args) {
     }
 
     // Need to update this to traverse the LL
-    node_t *node = head;
+    node_t *tmp, *node = head;
     while(node) {
+        tmp = node;
         printf("(%04d,%s,%d)\n", node->data.id, node->data.topic, node->data.value);
         node = node->next;
+        free(tmp);
     }
 
     pthread_exit(0);

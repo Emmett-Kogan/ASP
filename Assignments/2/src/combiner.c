@@ -102,5 +102,6 @@ int main(int argc, char **argv)
 
     free(threads);
     free(fifos);
+    free(fifo_map);
     return 0;
 }
