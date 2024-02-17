@@ -35,7 +35,7 @@ static void *reducer(void *args) {
 
         char *_id, *topic, *_value;
         char *tmp = buffer;
-        const char del[4] = "(),\0";
+        const char del[4] = "(),";
 
         _id = strtok_r(buffer, del, &tmp);
         topic = strtok_r(0, del, &tmp);
