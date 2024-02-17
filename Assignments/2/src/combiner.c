@@ -104,4 +104,3 @@ int main(int argc, char **argv)
     free(fifos);
     return 0;
 }
-

@@ -11,7 +11,11 @@ make
 
 for i in {0..4}; do
     for j in ${depths[@]}; do
-        ./combiner $j ${users[$i]} <testfiles/input$i.txt > temp.txt
+
+        # want to shuffle the input file
+        shuf testfiles/input$i.txt >shuffled.txt
+
+        ./combiner $j ${users[$i]} <shuffled.txt > temp.txt
 
         if [[ $? -ne 0 ]]; then
             echo "Error occured"
@@ -28,4 +32,4 @@ for i in {0..4}; do
 done
 
 make clean
-rm temp.txt s.txt
+rm temp.txt s.txt shuffled.txt
