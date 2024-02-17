@@ -1,7 +1,8 @@
+test_count=$(($(ls testfiles | wc -l)/2 -1))
 make
 
 thread_counts=(1,2,4,8,16,32)
-for i in {0..0}; do
+for i in $(seq 0 $test_count); do
     for j in ${thread_counts[@]}; do
         timeout 20s ./a3 testfiles/input$i.txt $j >temp.txt
         if [[ $? -eq 124 ]]; then

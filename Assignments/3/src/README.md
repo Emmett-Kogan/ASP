@@ -8,4 +8,4 @@
 
 ## Build Instructions
 1. Do `make` as the default rule `transfer` (`clean` deletes all produced files if you want to clean up)
-2. 
+2. <add instructions regarding the test script>
