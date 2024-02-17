@@ -94,6 +94,9 @@ int main(int argc, char **argv)
         FIFO_clean(&fifos[i]);
     }
 
+    free(threads);
+    free(fifos);
+
     fclose(fptr);
 
     // Print accounts while freeing linked list
