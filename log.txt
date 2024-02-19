@@ -8,3 +8,8 @@ Participation Log:
     2/2 - Talked about assignment 2 spec
     2/6 - Talked about conditional variables and looked at FIFO code. I now think the name "conditional variables" is the worst possible name for them because really they act as gates
     2/9 - Asked about common practices of unwinding function state using the cleaunp calls discussed in class, responded to question about what would happen if cleanup_pop arg was changed, answered someone else's question about how to call all of the pushed cleaunp functions
+    2/12 - In class activity
+    2/13 - I think I went to office hours to ask about my solution
+    2/17 - Email exchange about assignment 3
+    2/19 - Asked about whether introducing "benign" race conditions to increase the availability of a critical section is necessarily bad. Asked about modifying unused/reserved portions of addresses and using them for various other variables. Double checked with line length
+
