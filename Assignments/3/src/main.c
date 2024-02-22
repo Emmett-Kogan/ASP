@@ -178,15 +178,6 @@ static void *worker(void *args) {
         src_node->balance  -= amount;
         dest_node->balance += amount;
 
-        /*
-         * While the following is technically necessary to avoid a data race,
-         * the data race being prevented is benign. Where the worst case is that
-         * a thread getting the sem values may get a 0 instead of a 1, and be blocked
-         * an extra time. However, this is not an issue as the consumption of the
-         * semaphores is mutually exclusive. There will never be a case where a
-         * thread attempts to wait on a semaphore that is already 0        
-         */
-
         // Pick up lock
         pthread_mutex_lock(&lock);
 
