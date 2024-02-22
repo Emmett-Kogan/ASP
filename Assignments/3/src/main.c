@@ -19,7 +19,7 @@ typedef struct node_t {
 } node_t;
 
 static node_t *head = NULL;
-static pthread_mutex_t action_lock;
+static pthread_mutex_t lock;
 
 int main(int argc, char **argv) 
 {
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     pthread_t *threads = malloc(num_threads*sizeof(pthread_t));
     FIFO_t *fifos = malloc(num_threads*sizeof(FIFO_t));
   
-    pthread_mutex_init(&action_lock, NULL);
+    pthread_mutex_init(&lock, NULL);
 
     for (int i = 0; i < num_threads; i++) {
         FIFO_init(&fifos[i], DEPTH, MAX_STR_LEN);
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
         fgets(buffer, 128, fptr);
     }
 
-    // Cleanup
+    // Cleanup 
     void *res;
     buffer[0] = '\n';
     for (int i = 0; i < num_threads; i++) {
@@ -114,74 +114,86 @@ int main(int argc, char **argv)
 static void *worker(void *args) {
     char buffer[MAX_STR_LEN];
     while (1) {
+        // Get transfer from main thread
         FIFO_pop((FIFO_t *) args, buffer);
 
         if (buffer[0] == '\n')
             break;
 
         // Parse transfer arguements and convert to something useful
-        char *_from, *_to, *_amount, *tmp = buffer+9;
-        _from = strtok_r(buffer+9, " ", &tmp);
-        _to = strtok_r(0, " ", &tmp);
+        char *_src, *_dest, *_amount, *tmp = buffer+9;
+        _src = strtok_r(buffer+9, " ", &tmp);
+        _dest = strtok_r(0, " ", &tmp);
         _amount = strtok_r(0, " ", &tmp);
-        int from = atoi(_from), to = atoi(_to), amount = atoi(_amount);
+        int src = atoi(_src), dest = atoi(_dest), amount = atoi(_amount);
         
+        // If this is the case, the transaction wouldn't affect anything
+        if (src == dest)
+            continue;
+
         // Get pointers to both of the account nodes
-        node_t *acc_from = head;
-        while(acc_from) {
-            if (acc_from->id == from)
+        node_t *src_node = head;
+        while(src_node) {
+            if (src_node->id == src)
                 break;
-            acc_from = acc_from->next;
+            src_node = src_node->next;
         }
 
-        node_t *acc_to = head;
-        while(acc_to) {
-            if (acc_to->id == to)
+        node_t *dest_node = head;
+        while(dest_node) {
+            if (dest_node->id == dest)
                 break;
-            acc_to = acc_to->next;
+            dest_node = dest_node->next;
         }
 
-        // This basically polls the two required semaphores until they are available
-        int s_from = 0, s_to = 0;
+        // Wait until we can obtain src and dest accounts
+        int src_semval = 0, dest_semval = 0;
         while (1) {
-            // Get action lock
-            pthread_mutex_lock(&action_lock);
+            // Get lock
+            pthread_mutex_lock(&lock);
 
             // Get values of both account semaphores
-            sem_getvalue(&acc_from->s, &s_from);
-            sem_getvalue(&acc_to->s, &s_to);
+            sem_getvalue(&src_node->s, &src_semval);
+            sem_getvalue(&dest_node->s, &dest_semval);
 
             // If both available proceed
-            if (s_from == 1 && s_to == 1)
+            if (src_semval == 1 && dest_semval == 1) {
+                //printf("Thread obtained access to accounts %d and %d\n", from, to);
                 break;
+            }
             
-            // Otherwise give up the action lock and block self
-            pthread_mutex_unlock(&action_lock);
+            // Otherwise give up the lock and block self
+            pthread_mutex_unlock(&lock);
             usleep(1000);   // sleep for 1ms, BUGBUG
         }
 
         // Pick up both semaphores now that we know both are available
-        sem_wait(&acc_from->s);
-        sem_wait(&acc_to->s);
+        sem_wait(&src_node->s);
+        sem_wait(&dest_node->s);
 
-        // Release action lock so while we are transferring someone else can try to do another
-        pthread_mutex_unlock(&action_lock);
+        // Release action lock after obtaining account access
+        pthread_mutex_unlock(&lock);
 
         // Do transfer
-        acc_from->balance -= amount;
-        acc_to->balance   += amount;
+        src_node->balance  -= amount;
+        dest_node->balance += amount;
 
-        // Pick up action lock
-        pthread_mutex_lock(&action_lock);
+        /*
+         * While the following is technically necessary to avoid a data race,
+         * the data race being prevented is benign. Where the worst case is that
+         * a thread getting the sem values may get a 0 instead of a 1, and be blocked
+         * an extra time. However, this is not an issue as the consumption of the
+         * semaphores is mutually exclusive. There will never be a case where a
+         * thread attempts to wait on a semaphore that is already 0        
+         */
 
-        // Once obtained release both accounts and action lock
-        sem_post(&acc_from->s);
-        sem_post(&acc_to->s);
+        // Pick up lock
+        pthread_mutex_lock(&lock);
 
-        pthread_mutex_unlock(&action_lock);
-
-        // Reset buffer for next transfer
-        memset(buffer, 0, MAX_STR_LEN);
+        // Release all semaphores and synchronization vars
+        sem_post(&src_node->s);
+        sem_post(&dest_node->s);
+        pthread_mutex_unlock(&lock);
     }
 
     pthread_exit(NULL);

@@ -1,7 +1,7 @@
 test_count=$(($(ls testfiles | wc -l)/2 -1))
 make
 
-thread_counts=(1,2,4,8,16,32)
+thread_counts=(1 2 4 8 16 32)
 for i in $(seq 0 $test_count); do
     for j in ${thread_counts[@]}; do
         timeout 20s ./a3 testfiles/input$i.txt $j >temp.txt
@@ -10,7 +10,7 @@ for i in $(seq 0 $test_count); do
             continue
         fi
 
-        diff temp.txt testfiles/output0.txt >/dev/null
+        diff -w temp.txt testfiles/output$i.txt >/dev/null
         if [[ $? -ne 0 ]]; then
             echo "Differences found during test $i with $j threads"
         fi
