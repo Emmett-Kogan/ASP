@@ -127,7 +127,7 @@ static void *worker(void *args) {
         _amount = strtok_r(0, " ", &tmp);
         int src = atoi(_src), dest = atoi(_dest), amount = atoi(_amount);
         
-        // If this is the case, the transaction wouldn't affect anything
+        // If the same, transaction would do nothing anyways
         if (src == dest)
             continue;
 
@@ -146,45 +146,22 @@ static void *worker(void *args) {
             dest_node = dest_node->next;
         }
 
-        // Wait until we can obtain src and dest accounts
-        int src_semval = 0, dest_semval = 0;
-        while (1) {
-            // Get lock
-            pthread_mutex_lock(&lock);
-
-            // Get values of both account semaphores
-            sem_getvalue(&src_node->s, &src_semval);
-            sem_getvalue(&dest_node->s, &dest_semval);
-
-            // If both available proceed
-            if (src_semval == 1 && dest_semval == 1) {
-                //printf("Thread obtained access to accounts %d and %d\n", from, to);
-                break;
-            }
-            
-            // Otherwise give up the lock and block self
-            pthread_mutex_unlock(&lock);
-            usleep(1000);   // sleep for 1ms, BUGBUG
+        // Obtain the smaller account first
+        if (src < dest) {
+            sem_wait(&src_node->s);
+            sem_wait(&dest_node->s);
+        } else {
+            sem_wait(&dest_node->s);
+            sem_wait(&src_node->s);
         }
-
-        // Pick up both semaphores now that we know both are available
-        sem_wait(&src_node->s);
-        sem_wait(&dest_node->s);
-
-        // Release action lock after obtaining account access
-        pthread_mutex_unlock(&lock);
 
         // Do transfer
         src_node->balance  -= amount;
         dest_node->balance += amount;
 
-        // Pick up lock
-        pthread_mutex_lock(&lock);
-
-        // Release all semaphores and synchronization vars
+        // Release accounts
         sem_post(&src_node->s);
         sem_post(&dest_node->s);
-        pthread_mutex_unlock(&lock);
     }
 
     pthread_exit(NULL);
