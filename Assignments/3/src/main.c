@@ -132,20 +132,18 @@ static void *worker(void *args) {
             continue;
 
         // Get pointers to both of the account nodes
-        node_t *src_node = head;
-        while(src_node) {
-            if (src_node->id == src)
-                break;
-            src_node = src_node->next;
-        }
+        node_t *src_node = NULL, *dest_node = NULL, *iter = head;
+        while(iter) {
+            if (iter->id == src)
+                src_node = iter;
+            if (iter->id == dest)
+                dest_node = iter;
 
-        node_t *dest_node = head;
-        while(dest_node) {
-            if (dest_node->id == dest)
+            if (src_node && dest_node)
                 break;
-            dest_node = dest_node->next;
+            iter = iter->next;
         }
-
+        
         // Obtain the smaller account first
         if (src < dest) {
             sem_wait(&src_node->s);
