@@ -19,7 +19,6 @@ typedef struct node_t {
 } node_t;
 
 static node_t *head = NULL;
-static pthread_mutex_t lock;
 
 int main(int argc, char **argv) 
 {
@@ -59,12 +58,10 @@ int main(int argc, char **argv)
         accounts++;
     }
 
-    // Init threads and synchronization variables
+    // Init threads
     int num_threads = atoi(argv[2]);
     pthread_t *threads = malloc(num_threads*sizeof(pthread_t));
     FIFO_t *fifos = malloc(num_threads*sizeof(FIFO_t));
-  
-    pthread_mutex_init(&lock, NULL);
 
     for (int i = 0; i < num_threads; i++) {
         FIFO_init(&fifos[i], DEPTH, MAX_STR_LEN);
@@ -96,7 +93,6 @@ int main(int argc, char **argv)
 
     free(threads);
     free(fifos);
-
     fclose(fptr);
 
     // Print accounts while freeing linked list
@@ -117,6 +113,7 @@ static void *worker(void *args) {
         // Get transfer from main thread
         FIFO_pop((FIFO_t *) args, buffer);
 
+        // Terminal condition of thread
         if (buffer[0] == '\n')
             break;
 
@@ -143,7 +140,7 @@ static void *worker(void *args) {
                 break;
             iter = iter->next;
         }
-        
+
         // Obtain the smaller account first
         if (src < dest) {
             sem_wait(&src_node->s);
