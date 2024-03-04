@@ -12,4 +12,4 @@ Participation Log:
     2/13 - I think I went to office hours to ask about my solution
     2/17 - Email exchange about assignment 3
     2/19 - Asked about whether introducing "benign" race conditions to increase the availability of a critical section is necessarily bad. Asked about modifying unused/reserved portions of addresses and using them for various other variables. Double checked with line length
-
+    3/4 - Asked question about msaking signals in user process, responded to question about why the API for masking signals not throwing errors for SIGKILL and SIGSTOP isn't bad
