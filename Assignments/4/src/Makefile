@@ -4,5 +4,8 @@
 default:
 	@gcc -O0 -o a4 main.c lib/FIFO.c
 
+debug:
+	@gcc -O0 -o a4 main.c lib/FIFO.c -g
+
 clean:
 	@rm a4
