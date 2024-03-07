@@ -13,3 +13,4 @@ Participation Log:
     2/17 - Email exchange about assignment 3
     2/19 - Asked about whether introducing "benign" race conditions to increase the availability of a critical section is necessarily bad. Asked about modifying unused/reserved portions of addresses and using them for various other variables. Double checked with line length
     3/4 - Asked question about msaking signals in user process, responded to question about why the API for masking signals not throwing errors for SIGKILL and SIGSTOP isn't bad
+    3/6 - Asked about whether the function table of handler hooks is also copied during a fork, and if they'd still work given the layout of the new process was the same as the original
