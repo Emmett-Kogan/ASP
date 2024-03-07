@@ -16,7 +16,7 @@ for i in $(seq 0 $test_count); do
         # want to shuffle the input file
         shuf testfiles/input$i.txt >shuffled.txt
 
-        ./combiner $j ${users[$i]} <shuffled.txt > temp.txt
+        ./a4 $j ${users[$i]} <shuffled.txt > temp.txt
 
         if [[ $? -ne 0 ]]; then
             echo "Error occured"
