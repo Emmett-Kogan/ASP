@@ -28,7 +28,7 @@ static void *reducer(void *args) {
 
     while(1) {
         memset(buffer, 0, 33);
-        FIFO_pop((FIFO_t *) args, buffer);
+        FIFO_pop((FIFO_t *) args, buffer, 0);
 
         if (buffer[0] == '\n')
             break;

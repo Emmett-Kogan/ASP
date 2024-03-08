@@ -2,6 +2,7 @@
 // Last modified: 2/11/24
 
 #include "FIFO.h"
+#include <bits/pthreadtypes.h>
 #include <pthread.h>
 #include <sys/mman.h>
 
@@ -62,8 +63,8 @@ int FIFO_push(FIFO_t *f, const void *data, uint8_t flags)
 
     // While full wait on cond var
     while (f->count == f->depth) {
-        if (flags & PUSH_NONBLOCKING)
-            goto mutex;
+        if (flags & NONBLOCKING)
+            goto full;
         if (pthread_cond_wait(&f->full, &f->lock))
             goto cond_wait;
     }
@@ -84,18 +85,24 @@ cond_wait:
     pthread_mutex_unlock(&f->lock);
 mutex:
     return -1;
+full:
+    pthread_mutex_unlock(&f->lock);
+    return 1;
 }
 
-int FIFO_pop(FIFO_t *f, void *data)
+int FIFO_pop(FIFO_t *f, void *data, uint8_t flags)
 {
     // Pick up lock
     if (pthread_mutex_lock(&f->lock))
         goto mutex;
 
     // While empty wait on cond var
-    while (f->count == 0)
+    while (f->count == 0) {
+        if (flags & NONBLOCKING)
+            goto empty;
         if (pthread_cond_wait(&f->empty, &f->lock))
             goto cond_wait;
+    }
 
     // Read data and update data structure
     memcpy(data, f->head, f->width);
@@ -113,6 +120,9 @@ cond_wait:
     pthread_mutex_unlock(&f->lock);
 mutex:
     return -1;
+empty:
+    pthread_mutex_unlock(&f->lock);
+    return 1;
 }
 
 // Resets FIFO struct essentially to state before init was called

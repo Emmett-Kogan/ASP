@@ -13,7 +13,7 @@
 #include <sys/mman.h>
 
 // Flags
-#define PUSH_NONBLOCKING 0x01
+#define NONBLOCKING 0x01
 
 typedef struct FIFO_t {
     uint32_t depth, width, count;
@@ -25,7 +25,7 @@ typedef struct FIFO_t {
 
 int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width);
 int FIFO_push(FIFO_t *f, const void *data, uint8_t flags);
-int FIFO_pop(FIFO_t *f, void *data);
+int FIFO_pop(FIFO_t *f, void *data, uint8_t flags);
 int FIFO_clean(FIFO_t *f);
 
 #endif
