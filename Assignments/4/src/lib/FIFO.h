@@ -12,16 +12,19 @@
 #include <string.h>
 #include <sys/mman.h>
 
+// Flags
+#define PUSH_NONBLOCKING 0x01
+
 typedef struct FIFO_t {
     uint32_t depth, width, count;
     pthread_mutex_t lock;
     pthread_cond_t full, empty;
     void *buffer;
-    void *last, *head, *tail;
+    void *head, *tail;
 } FIFO_t;
 
 int FIFO_init(FIFO_t *f, uint32_t depth, uint32_t width);
-int FIFO_push(FIFO_t *f, void *data);
+int FIFO_push(FIFO_t *f, const void *data, uint8_t flags);
 int FIFO_pop(FIFO_t *f, void *data);
 int FIFO_clean(FIFO_t *f);
 

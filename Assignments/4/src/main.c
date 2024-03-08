@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
             // send a newline char to each buffer to signal no more data
             outbuff[0] = '\n';
             for (int i = 0; i < num_threads; i++)
-                FIFO_push(&fifos[i], outbuff);
+                FIFO_push(&fifos[i], outbuff, 0);
             break;
         }
 
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
         }
 
         // Send string the mapped fifo
-        FIFO_push(&fifos[i], outbuff);
+        FIFO_push(&fifos[i], outbuff, 0);
 	}
 
     // Wait for all children to die
