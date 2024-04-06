@@ -13,10 +13,7 @@
 #define RAMDISK_SIZE (size_t) (16 * PAGE_SIZE) // ramdisk size 
 #define CDRV_IOC_MAGIC 'Z'
 #define ASP_CLEAR_BUF _IO(CDRV_IOC_MAGIC, 1)
-
-// note that this macro assumes that a variable retval stores the return value
-#define ERR(l, r, label) { l = r; goto label; }   
-
+#define ERR(lval, rval, label) { lval = rval; goto label; }   
 
 struct ASP_mycdrv {
 	struct cdev cdev;
@@ -54,7 +51,7 @@ static loff_t mycdrv_llseek(struct file *fptr, loff_t off, int whence)
         return -ERESTARTSYS;
 
     // Calculate new offset value
-    loff_t newpos, retval = 0;;
+    loff_t newpos;
     switch (whence) {
     case SEEK_SET:
         newpos = off;
@@ -66,12 +63,12 @@ static loff_t mycdrv_llseek(struct file *fptr, loff_t off, int whence)
         newpos = dev->ramdisk_size + off;
         break;
     default:
-        ERR(retval, -EINVAL, exit);
+        ERR(newpos, -EINVAL, exit);
     }
-
+    
     // Validate newpos
     if (newpos < 0)
-        ERR(retval, -EDOM, exit);
+        ERR(newpos, -EDOM, exit);
 
     // Check if we need to expand buffer
     if (newpos > dev->ramdisk_size) {
@@ -86,10 +83,11 @@ static loff_t mycdrv_llseek(struct file *fptr, loff_t off, int whence)
     }
 
     fptr->f_pos = newpos;
+    pr_info("SEEK: pos=%lld\n", fptr->f_pos);
 
 exit:
     up(&dev->sem);
-    return retval;
+    return newpos;
 }
 
 static ssize_t mycdrv_read(struct file *fptr, char __user *buf, size_t lbuf, loff_t *ppos)
@@ -98,13 +96,15 @@ static ssize_t mycdrv_read(struct file *fptr, char __user *buf, size_t lbuf, lof
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
+    pr_info("READ ARGS: %ld, pos=%lld",lbuf,*ppos);
+
     ssize_t nbytes;
     if ((lbuf + *ppos) > dev->ramdisk_size) {
         pr_info("Error: attempted to read past end of device\n");
         ERR(nbytes, 0, exit);
     }
 
-    nbytes = lbuf - copy_to_user(buf, dev->ramdisk, lbuf);
+    nbytes = lbuf - copy_to_user(buf, dev->ramdisk+*ppos, lbuf);
     *ppos += nbytes;
     pr_info("READ: nbytes=%ld, pos=%lld\n", nbytes, *ppos);
 

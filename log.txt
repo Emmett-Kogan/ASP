@@ -15,3 +15,4 @@ Participation Log:
     3/4 - Asked question about msaking signals in user process, responded to question about why the API for masking signals not throwing errors for SIGKILL and SIGSTOP isn't bad
     3/6 - Asked about whether the function table of handler hooks is also copied during a fork, and if they'd still work given the layout of the new process was the same as the original
     3/27 - Asked about gcc-12 warning during activity 3
+    4/5 - Emailed about possible mistake with assingnment 5 test cases (SEEK_CUR and SEEK_END being swapped)
