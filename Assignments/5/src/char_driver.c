@@ -72,11 +72,8 @@ static loff_t mycdrv_llseek(struct file *fptr, loff_t off, int whence)
 
     // Check if we need to expand buffer
     if (newpos > dev->ramdisk_size) {
-        // This behavior isn't well specified in the assignment doc
-
         // New region should be filled with zeros (for some dumbass reason)
-        char *tmp = (char *) kmalloc(newpos, GFP_KERNEL);       // new ramdisk buffer
-        memset(tmp, 0, newpos);                                 // Clear new region to zeros
+        char *tmp = (char *) kcalloc(newpos, 1, GFP_KERNEL);       // new ramdisk buffer
         memcpy(tmp, dev->ramdisk, size);
         kfree(dev->ramdisk);
         dev->ramdisk = tmp;
@@ -95,8 +92,6 @@ static ssize_t mycdrv_read(struct file *fptr, char __user *buf, size_t lbuf, lof
     struct ASP_mycdrv *dev = fptr->private_data;
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
-
-    pr_info("READ ARGS: %ld, pos=%lld",lbuf,*ppos);
 
     ssize_t nbytes;
     if ((lbuf + *ppos) > dev->ramdisk_size) {
@@ -148,7 +143,7 @@ static long mycdrv_ioctl(struct file *fptr, unsigned int cmd, unsigned long arg)
     long retval = 0;
     switch (cmd) {
     case ASP_CLEAR_BUF:
-        // Should clear the ramdisk and set position to 0
+        // Clear the ramdisk and set position to 0
         memset(dev->ramdisk, 0, dev->ramdisk_size);
         fptr->f_pos = 0;
         break;
@@ -165,14 +160,14 @@ static int mycdrv_open(struct inode *inode, struct file *fptr)
 {
     struct ASP_mycdrv *dev = container_of(inode->i_cdev, struct ASP_mycdrv, cdev);
     fptr->private_data = dev;
-    pr_info("Opening device: %s%d:\n\n", MYDEV_NAME, dev->devNo);
+    pr_info("OPEN: %s%d:\n", MYDEV_NAME, dev->devNo);
     return 0;
 }
 
 static int mycdrv_release(struct inode *inode, struct file *fptr) 
 {
     struct ASP_mycdrv *dev = fptr->private_data;
-    pr_info("Releasing device: %s%d:\n\n", MYDEV_NAME, dev->devNo);
+    pr_info("RELEASE: %s%d:\n\n", MYDEV_NAME, dev->devNo);
     return 0;
 }
 
@@ -189,7 +184,7 @@ static const struct file_operations mycdrv_fops = {
 static int __init my_init(void) 
 {
     // Allocate space for each device driver struct
-    devices = (struct ASP_mycdrv *) kmalloc(sizeof(struct ASP_mycdrv)*numdevices, GFP_KERNEL);
+    devices = (struct ASP_mycdrv *) kcalloc(sizeof(struct ASP_mycdrv), numdevices, GFP_KERNEL);
 
     // Reserve device numbers
     register_chrdev_region(MKDEV(majorno, minorno), numdevices, MYDEV_NAME);
@@ -200,9 +195,8 @@ static int __init my_init(void)
     // Initialize each device
     for (int i = 0; i < numdevices; i++) {
         // Initialize device struct's buffer, minor number and sememaphore
-        devices[i].ramdisk = (char *) kmalloc(size, GFP_KERNEL);
+        devices[i].ramdisk = (char *) kcalloc(size, 1, GFP_KERNEL);
         devices[i].ramdisk_size = size;
-        memset(devices[i].ramdisk, 0, size);
         devices[i].devNo = minorno+i;
         sema_init(&devices[i].sem, 1);
 
@@ -215,7 +209,7 @@ static int __init my_init(void)
     }
 
     // Log success and return
-    pr_info("Succeeded in registering %d character devices %s\n", numdevices, MYDEV_NAME);
+    pr_info("INIT: Succeeded in registering %d %ss\n\n", numdevices, MYDEV_NAME);
     return 0;
 }
 
@@ -236,7 +230,7 @@ static void __exit my_exit(void)
     // free devices structs
     kfree(devices);
 
-    pr_info("Succeeded in unregistering %d character devices %s\n", numdevices, MYDEV_NAME);
+    pr_info("EXIT: Succeeded in unregistering %d %ss\n", numdevices, MYDEV_NAME);
 }
 
 module_init(my_init);
