@@ -9,13 +9,13 @@
 #include <linux/device.h>
 #include <linux/semaphore.h>
 
-#define MYDEV_NAME "mycdrv"
+#define DEV_NAME "mycdev"
 #define RAMDISK_SIZE (size_t) (16 * PAGE_SIZE) // ramdisk size 
 #define CDRV_IOC_MAGIC 'Z'
 #define ASP_CLEAR_BUF _IO(CDRV_IOC_MAGIC, 1)
 #define ERR(lval, rval, label) { lval = rval; goto label; }   
 
-struct ASP_mycdrv {
+struct ASP_mycdev {
 	struct cdev cdev;
 	char *ramdisk;
 	struct semaphore sem;
@@ -24,7 +24,7 @@ struct ASP_mycdrv {
 };
 
 // Pointer to AoS for all device driver structs
-static struct ASP_mycdrv *devices;
+static struct ASP_mycdev *devices;
 
 // Node class for making nodes
 static struct class *node_class;
@@ -44,9 +44,9 @@ module_param(size, long, S_IRUGO);
  * In the case of a request that goes beyond end of the buffer, your imple-
  * mentation needs to expand the buffer and fill the new region with zeros.
  */
-static loff_t mycdrv_llseek(struct file *fptr, loff_t off, int whence)
+static loff_t mycdev_llseek(struct file *fptr, loff_t off, int whence)
 {
-    struct ASP_mycdrv *dev = fptr->private_data;
+    struct ASP_mycdev *dev = fptr->private_data;
     if(down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
@@ -87,9 +87,9 @@ exit:
     return newpos;
 }
 
-static ssize_t mycdrv_read(struct file *fptr, char __user *buf, size_t lbuf, loff_t *ppos)
+static ssize_t mycdev_read(struct file *fptr, char __user *buf, size_t lbuf, loff_t *ppos)
 {   
-    struct ASP_mycdrv *dev = fptr->private_data;
+    struct ASP_mycdev *dev = fptr->private_data;
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
@@ -108,9 +108,9 @@ exit:
     return nbytes;
 }
 
-static ssize_t mycdrv_write(struct file *fptr, const char __user *buf, size_t lbuf, loff_t *ppos)
+static ssize_t mycdev_write(struct file *fptr, const char __user *buf, size_t lbuf, loff_t *ppos)
 {
-    struct ASP_mycdrv *dev = fptr->private_data;
+    struct ASP_mycdev *dev = fptr->private_data;
     if (down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
@@ -129,14 +129,14 @@ exit:
     return nbytes;
 }
 
-static long mycdrv_ioctl(struct file *fptr, unsigned int cmd, unsigned long arg) 
+static long mycdev_ioctl(struct file *fptr, unsigned int cmd, unsigned long arg) 
 {
     // Verify cmd
     if (_IOC_TYPE(cmd) != CDRV_IOC_MAGIC) 
         return -ENOTTY;
     
     // Start critical section
-    struct ASP_mycdrv *dev = fptr->private_data;
+    struct ASP_mycdev *dev = fptr->private_data;
     if(down_interruptible(&dev->sem))
         return -ERESTARTSYS;
 
@@ -156,41 +156,41 @@ exit:
     return retval;
 }
 
-static int mycdrv_open(struct inode *inode, struct file *fptr) 
+static int mycdev_open(struct inode *inode, struct file *fptr) 
 {
-    struct ASP_mycdrv *dev = container_of(inode->i_cdev, struct ASP_mycdrv, cdev);
+    struct ASP_mycdev *dev = container_of(inode->i_cdev, struct ASP_mycdev, cdev);
     fptr->private_data = dev;
-    pr_info("OPEN: %s%d:\n", MYDEV_NAME, dev->devNo);
+    pr_info("OPEN: %s%d:\n", DEV_NAME, dev->devNo);
     return 0;
 }
 
-static int mycdrv_release(struct inode *inode, struct file *fptr) 
+static int mycdev_release(struct inode *inode, struct file *fptr) 
 {
-    struct ASP_mycdrv *dev = fptr->private_data;
-    pr_info("RELEASE: %s%d:\n\n", MYDEV_NAME, dev->devNo);
+    struct ASP_mycdev *dev = fptr->private_data;
+    pr_info("RELEASE: %s%d:\n\n", DEV_NAME, dev->devNo);
     return 0;
 }
 
-static const struct file_operations mycdrv_fops = {
+static const struct file_operations mycdev_fops = {
     .owner = THIS_MODULE,
-    .llseek = mycdrv_llseek,
-    .read = mycdrv_read,
-    .write = mycdrv_write,
-    .unlocked_ioctl = mycdrv_ioctl,
-    .open = mycdrv_open,
-    .release = mycdrv_release,
+    .llseek = mycdev_llseek,
+    .read = mycdev_read,
+    .write = mycdev_write,
+    .unlocked_ioctl = mycdev_ioctl,
+    .open = mycdev_open,
+    .release = mycdev_release,
 };
 
 static int __init my_init(void) 
 {
     // Allocate space for each device driver struct
-    devices = (struct ASP_mycdrv *) kcalloc(sizeof(struct ASP_mycdrv), numdevices, GFP_KERNEL);
+    devices = (struct ASP_mycdev *) kcalloc(sizeof(struct ASP_mycdev), numdevices, GFP_KERNEL);
 
     // Reserve device numbers
-    register_chrdev_region(MKDEV(majorno, minorno), numdevices, MYDEV_NAME);
+    register_chrdev_region(MKDEV(majorno, minorno), numdevices, DEV_NAME);
 
     // Make class for device nodes
-    node_class = class_create("ASP_mycdrv");
+    node_class = class_create("ASP_mycdev");
 
     // Initialize each device
     for (int i = 0; i < numdevices; i++) {
@@ -201,15 +201,15 @@ static int __init my_init(void)
         sema_init(&devices[i].sem, 1);
 
         // Initialize nested cdev struct and inform kernel
-        cdev_init(&devices[i].cdev, &mycdrv_fops);
+        cdev_init(&devices[i].cdev, &mycdev_fops);
         cdev_add(&devices[i].cdev, MKDEV(majorno, minorno+i), 1);
 
         // Create device node
-        device_create(node_class, NULL, MKDEV(majorno, minorno+i), NULL, "mycdrv%d", minorno+i);
+        device_create(node_class, NULL, MKDEV(majorno, minorno+i), NULL, "mycdev%d", minorno+i);
     }
 
     // Log success and return
-    pr_info("INIT: Succeeded in registering %d %ss\n\n", numdevices, MYDEV_NAME);
+    pr_info("INIT: Succeeded in registering %d %ss\n\n", numdevices, DEV_NAME);
     return 0;
 }
 
@@ -230,7 +230,7 @@ static void __exit my_exit(void)
     // free devices structs
     kfree(devices);
 
-    pr_info("EXIT: Succeeded in unregistering %d %ss\n", numdevices, MYDEV_NAME);
+    pr_info("EXIT: Succeeded in unregistering %d %ss\n", numdevices, DEV_NAME);
 }
 
 module_init(my_init);

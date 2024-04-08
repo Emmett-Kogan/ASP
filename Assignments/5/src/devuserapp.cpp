@@ -19,7 +19,7 @@
 #define CDRV_IOC_MAGIC 'Z'
 #define ASP_CLEAR_BUF _IO(CDRV_IOC_MAGIC, 1)
 
-#define devname "mycdrv"
+#define devname "mycdev"
 
 int deviceMode = 1;
 
