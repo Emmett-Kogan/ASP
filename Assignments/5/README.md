@@ -8,3 +8,4 @@
 3. Now, running `devuserapp` with any of the input files in `testfiles/` as a cmd line arguement will test the driver.
 
 I also provided a script, `test.sh`, that does all of this, and runs and diffs each of the provided test cases, just with the default params of the driver.
+I modified the devuserapp.cpp file to fix the typo: mycdrv -> mycdev, but that's it I think.
