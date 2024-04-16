@@ -23,7 +23,7 @@
 #define MODE1 1 // define mode here. There can be 2 modes
 #define MODE2 2
 
-static int majorNo = 700 , minorNo = 0;
+static int majorNo = 500 , minorNo = 0;
 
 static struct class *cl;
 struct e2_dev {
@@ -64,9 +64,8 @@ int e2_release(struct inode *inode, struct file *filp)
         devc->count1--;
         if (devc->count1 == 1)
             wake_up_interruptible(&(devc->queue1));
-	up(&devc->sem2);
-    }
-    else if (devc->mode == MODE2) {
+	    up(&devc->sem2);
+    } else if (devc->mode == MODE2) {
         devc->count2--;
         if (devc->count2 == 1)
             wake_up_interruptible(&(devc->queue2));
@@ -77,29 +76,28 @@ int e2_release(struct inode *inode, struct file *filp)
 
 static ssize_t e2_read (struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-        struct e2_dev *devc = filp->private_data;
-	ssize_t ret = 0;
-	down_interruptible(&devc->sem1);
-	if (devc->mode == MODE1) {
-	   up(&devc->sem1);
-           if (*f_pos + count > ramdisk_size) {
-              printk("Trying to read past end of buffer!\n");
-              return ret;
-           }
-	   ret = count - copy_to_user(buf, devc->ramdisk, count);
-           *f_pos += ret;
-	}
-	else {
-          if (*f_pos + count > ramdisk_size) {
-             printk("Trying to read past end of buffer!\n");
-             up(&devc->sem1);
-             return ret;
-          }
-          ret = count - copy_to_user(buf, devc->ramdisk, count);
-          *f_pos += ret;
-	  up(&devc->sem1);
-	}
-	return ret;
+    struct e2_dev *devc = filp->private_data;
+    ssize_t ret = 0;
+    down_interruptible(&devc->sem1);
+    if (devc->mode == MODE1) {
+        up(&devc->sem1);
+        if (*f_pos + count > ramdisk_size) {
+            printk("Trying to read past end of buffer!\n");
+            return ret;
+        }
+        ret = count - copy_to_user(buf, devc->ramdisk, count);
+        *f_pos += ret;
+    } else {
+        if (*f_pos + count > ramdisk_size) {
+            printk("Trying to read past end of buffer!\n");
+            up(&devc->sem1);
+            return ret;
+        }
+        ret = count - copy_to_user(buf, devc->ramdisk, count);
+        *f_pos += ret;
+        up(&devc->sem1);
+    }
+    return ret;
 }
 
 
@@ -110,20 +108,19 @@ static ssize_t e2_write (struct file *filp, const char __user *buf, size_t count
     devc = filp->private_data;
     down_interruptible(&devc->sem1);
     if (devc->mode == MODE1) {
-	up(&devc->sem1);
+        up(&devc->sem1);
         if (*f_pos + count > ramdisk_size) {
             printk("Trying to read past end of buffer!\n");
             return ret;
         }
         ret = count - copy_from_user(devc->ramdisk, buf, count);
         *f_pos += ret;
-    }
-    else {
-       if (*f_pos + count > ramdisk_size) {
-          printk("Trying to read past end of buffer!\n");
-          up(&devc->sem1);
-          return ret;
-       }
+    } else {
+        if (*f_pos + count > ramdisk_size) {
+            printk("Trying to read past end of buffer!\n");
+            up(&devc->sem1);
+            return ret;
+        }
        ret = count - copy_from_user(devc->ramdisk, buf, count);
        *f_pos += ret;
        up(&devc->sem1);
@@ -133,78 +130,76 @@ static ssize_t e2_write (struct file *filp, const char __user *buf, size_t count
 
 static long e2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	
-       struct e2_dev *devc = filp->private_data;
-	
+    struct e2_dev *devc = filp->private_data;
+    
+    // Validate args
 	if (_IOC_TYPE(cmd) != CDRV_IOC_MAGIC) {
 		pr_info("Invalid magic number\n");
 		return -ENOTTY;
 	}
+
 	if ( (_IOC_NR(cmd) != 1) && (_IOC_NR(cmd) != 2) ) {
 		pr_info("Invalid cmd\n");
 		return -ENOTTY;
 	}
 	
 	switch(cmd) {
-		case E2_IOCMODE2:
-				down_interruptible(&(devc->sem1));
-				if (devc->mode == MODE2) {
-				   up(&devc->sem1);
-			           break;
-				}
-				if (devc->count1 > 1) {
-					while (devc->count1 > 1) {
-					    up(&devc->sem1);
-					    wait_event_interruptible(devc->queue1, (devc->count1 == 1));
-					    down_interruptible(&devc->sem1);
-					}
-				}
-				devc->mode = MODE2;
-                                devc->count1--;
-                                devc->count2++;
-				up(&devc->sem2);
-				up(&devc->sem1);
-				break;
-				
-		case E2_IOCMODE1:
-				down_interruptible(&devc->sem1);
-				if (devc->mode == MODE1) {
-				   up(&devc->sem1);
-				   break;
-				}
-				if (devc->count2 > 1) {
-				   while (devc->count2 > 1) {
-				       up(&devc->sem1);
-				       wait_event_interruptible(devc->queue2, (devc->count2 == 1));
-				       down_interruptible(&devc->sem1);
-				   }
-				}
-				devc->mode = MODE1;
-              		        devc->count2--;
-		                devc->count1++;
-				down_interruptible(&devc->sem2);
-				up(&devc->sem1);
-				break;
-				
-		default :
-		   pr_info("Unrecognized ioctl command\n");
-		   return -1;
-		   break;	
+    case E2_IOCMODE2:
+        down_interruptible(&(devc->sem1));
+        if (devc->mode == MODE2) {
+            up(&devc->sem1);
+            break;
+        }
+        if (devc->count1 > 1) {
+            while (devc->count1 > 1) {
+                up(&devc->sem1);
+                wait_event_interruptible(devc->queue1, (devc->count1 == 1));
+                down_interruptible(&devc->sem1);
+            }
+        }
+        devc->mode = MODE2;
+        devc->count1--;
+        devc->count2++;
+        up(&devc->sem2);
+        up(&devc->sem1);
+        break;   
+    case E2_IOCMODE1:
+        down_interruptible(&devc->sem1);
+        if (devc->mode == MODE1) {
+            up(&devc->sem1);
+            break;
+        }
+        if (devc->count2 > 1) {
+            while (devc->count2 > 1) {
+                up(&devc->sem1);
+                wait_event_interruptible(devc->queue2, (devc->count2 == 1));
+                down_interruptible(&devc->sem1);
+            }
+        }
+        devc->mode = MODE1;
+        devc->count2--;
+        devc->count1++;
+        down_interruptible(&devc->sem2);
+        up(&devc->sem1);
+        break;   
+    default:
+        pr_info("Unrecognized ioctl command\n");
+        return -1;
 	}
 	return 0;
 }
 
 static const struct file_operations fops = { 
-  .owner = THIS_MODULE,
-	.read = e2_read,
-	.write = e2_write,
-	.open = e2_open,
-	.release = e2_release,
-	.unlocked_ioctl = e2_ioctl,
+    .owner = THIS_MODULE,
+    .read = e2_read,
+    .write = e2_write,
+    .open = e2_open,
+    .release = e2_release,
+    .unlocked_ioctl = e2_ioctl,
 };
 
-static int __init my_init (void) {
-
+static int __init my_init (void) 
+{
    int ret = 0;
    dev_t dev_no = MKDEV(majorNo, minorNo);
    ret = register_chrdev_region(dev_no, 1, MYDEV_NAME);
@@ -212,7 +207,7 @@ static int __init my_init (void) {
     	printk(KERN_ALERT "mycdrv: failed to reserve major number");
     	return ret;
    }
-   cl = class_create(THIS_MODULE, MYDEV_NAME);
+   cl = class_create(MYDEV_NAME);
    dev = kmalloc(sizeof(struct e2_dev), GFP_KERNEL);
    dev->ramdisk = kmalloc(ramdisk_size, GFP_KERNEL);
    memset(dev->ramdisk,0,ramdisk_size);
@@ -233,8 +228,8 @@ static int __init my_init (void) {
    return 0;
 }
 
-static void __exit my_exit(void) {
-
+static void __exit my_exit(void) 
+{
    dev_t devNo = MKDEV(majorNo, minorNo);  
    printk(KERN_INFO "cleanup: unloading driver\n");
    cdev_del(&(dev->cdev));

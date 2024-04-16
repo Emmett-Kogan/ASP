@@ -7,7 +7,7 @@ all:
 	@$(MAKE) -C $(KERNEL_DIR) M=$(shell pwd) modules
 	
 app: 
-	@g++ -o devuserapp devuserapp.cpp -std=c++11
+	@g++ -o test test.c -std=c++11
 
 clean:
-	@rm -rf *.o *.ko *.mod.* *.symvers *.order devuserapp char_driver.mod .char_driver.* .Module.* .modules.*
+	@rm -rf *.o *.ko *.mod.* *.symvers *.order test Assignment6Code.mod .Assignment6Code.* .Module.* .modules.*
