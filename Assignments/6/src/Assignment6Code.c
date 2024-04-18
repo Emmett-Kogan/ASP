@@ -12,6 +12,7 @@
 #include <linux/device.h>
 #include <linux/ioctl.h>
 
+// This driver allocates 16 PAGES of memory, of which it will only ever use the first like n bytes. Offsets do not exist lol
 
 #define MYDEV_NAME "a5"
 #define ramdisk_size (size_t) (16 * PAGE_SIZE)
@@ -56,6 +57,7 @@ int e2_open(struct inode *inode, struct file *filp)
     if (devc->mode == MODE1) {
         // If opening in mode1, we need to get the other semaphore if possible
         devc->count1++;
+        
         up(&devc->sem1);
 
         // RC: Tbh this is technically a race condition but I don't think this could cause deadlock
@@ -92,7 +94,7 @@ int e2_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
-static ssize_t e2_read (struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t e2_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     pr_info("Read called\n");
     struct e2_dev *devc = filp->private_data;
@@ -119,7 +121,7 @@ static ssize_t e2_read (struct file *filp, char __user *buf, size_t count, loff_
     return ret;
 }
 
-static ssize_t e2_write (struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
+static ssize_t e2_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
     pr_info("Write called\n");
     struct e2_dev *devc;
@@ -142,9 +144,9 @@ static ssize_t e2_write (struct file *filp, const char __user *buf, size_t count
             up(&devc->sem1);
             return ret;
         }
-       ret = count - copy_from_user(devc->ramdisk, buf, count);
-       *f_pos += ret;
-       up(&devc->sem1);
+        ret = count - copy_from_user(devc->ramdisk, buf, count);
+        *f_pos += ret;
+        up(&devc->sem1);
     }
     return ret;
 }
@@ -173,6 +175,7 @@ static long e2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             up(&devc->sem1);
             break;
         }
+        
         // Wait until only 1 process left
         if (devc->count1 > 1) {
             while (devc->count1 > 1) {
@@ -206,6 +209,8 @@ static long e2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
                 down_interruptible(&devc->sem1);
             }
         }
+
+        // Update to mode 1, pick up mode 1 sem, release general access sem
         devc->mode = MODE1;
         devc->count2--;
         devc->count1++;

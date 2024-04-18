@@ -11,22 +11,35 @@
 #include <fcntl.h>
 #include <pthread.h>
 
+static void *worker(void *args)
+{   
+    int fd = *((int *) args);
+    int res = write(fd, ", World!", 8);
+    printf("Bytes written from child: %d\n", res);
+    pthread_exit(NULL);
+}
+
 int main() 
 {
-    int fd; 
+
+    int fd = open("/dev/a5", O_RDWR);
 
     switch(fork()) {
     case 0:
-        fd = open("/dev/a5", O_RDWR);
-        printf("child fd = %d\n", fd);
-        close(fd);
+        // Child
+
         return 0;
     default:
-        fd = open("/dev/a5", O_RDWR);
-        printf("parent fd = %d\n", fd);
-        break;
+        break;        
     }
 
+    pthread_t thread;
+    pthread_create(&thread, NULL, worker, &fd);
+
+    
+
+    void *res;
+    pthread_join(thread, &res);
     close(fd);
 
     return 0;
