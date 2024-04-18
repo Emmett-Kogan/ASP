@@ -90,6 +90,7 @@ int e2_release(struct inode *inode, struct file *filp)
             wake_up_interruptible(&(devc->queue2));
     }
 
+    pr_info("count1: %d\tcount2: %d\n", devc->count1, devc->count2);
     up(&devc->sem1);
     return 0;
 }
