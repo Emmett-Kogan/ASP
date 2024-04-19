@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <errno.h>
 #include <sys/wait.h>
@@ -16,35 +15,17 @@
 #define CDRV_IOC_MAGIC 'Z'
 #define E2_IOCMODE1 _IO(CDRV_IOC_MAGIC, 1)
 #define E2_IOCMODE2 _IO(CDRV_IOC_MAGIC, 2)
-
 #define ERR(s, n) { printf("%s", s); return n; }
 
+// Test cases
 static void testCase1(void);
 static void testCase2(void);
 static void testCase3(void);
 static void testCase4(void);
 
-
-    // int fd = open("/dev/a5", O_RDWR);
-
-    // switch(fork()) {
-    // case 0:
-    //     // Child
-
-    //     return 0;
-    // default:
-    //     break;        
-    // }
-
-    // pthread_t thread;
-    // pthread_create(&thread, NULL, worker, &fd);
-
-    
-
-    // void *res;
-    // pthread_join(thread, &res);
-    // close(fd);
-
+// Threads
+static void *test3thread1(void *args);
+static void *test3thread2(void *args);
 
 static void *worker(void *args)
 {   
@@ -59,9 +40,7 @@ int main(int argc, char **argv)
     if (argc < 2)
         ERR("Bad command line args\n", -EINVAL);
 
-    int testNo = atoi(argv[1]);
-
-    switch(testNo) {
+    switch(atoi(argv[1])) {
     case 1:
         testCase1();
         break;
@@ -115,7 +94,12 @@ static void testCase1(void)
         close(fd);
     }
 
+    // Note this should be unreachable
+    while(wait(NULL) > 0);
 }
+
+
+// Note if you run this test case good luck killing the processes it runs
 
 /* Similairly to test case 1, in test case 2, if process A opens the device and changes the 
  * mode to `MODE2`, then process B opens the device. If both process A and process B then try to call 
@@ -134,7 +118,7 @@ static void testCase2(void)
         fd = open("/dev/a5", O_RDWR);
         printf("Child attempting to switch to MODE1\n");
         ioctl(fd, E2_IOCMODE1);
-
+        close(fd);
         exit(0);
     default:
         // Parent
@@ -145,37 +129,100 @@ static void testCase2(void)
         sleep(5);
         printf("Parent attempting to switch to MODE1\n");
         ioctl(fd, E2_IOCMODE1);
+        close(fd);
         break;
     }
+
+    // Note this should be unreachable
+    while(wait(NULL) > 0);
 }
 
 /*
  */
 static void testCase3(void)
 {
-    
+    int fd = open("/dev/a5", O_RDWR);
+    printf("fd from main thread: %d\n", fd);
+    void *res;
+    pthread_t threads[2];
+    pthread_create(&threads[0], NULL, test3thread1, &fd);
+    pthread_create(&threads[1], NULL, test3thread2, &fd);
+    pthread_join(threads[0], &res);
+    pthread_join(threads[1], &res);
+    close(fd);
 }
 
 /*
  */
 static void testCase4(void)
 {
-    // Le funny
-    int fd = open("/dev/a5", O_RDWR);
+    int fd, count = 0;
 
-    for (int i = 0; i < 10; i++) {
-        printf("Forking\n");
-        switch(fork()) {
-        case 0:
-            printf("Proc%d close returned %d\n", i, close(fd));
-            exit(0);
-        default:
-            continue;
+    // Rest of test case
+    switch(fork()) {
+    case 0:
+    {
+        // Child
+        fd = open("/dev/a5", O_RDWR);
+        char buffer[32];
+
+        while(1) {
+            sleep(0.05);
+            write(fd, "test string", 11);
+            read(fd, buffer, 11);
+            if (count++ > 200) break;
+        }
+
+        exit(0);
+    }
+    default:
+        // Parent
+        while(1) {
+            sleep(0.05);
+            fd = open("/dev/a5", O_RDWR);
+            close(fd);
+            if (count++ > 200) break;
         }
     }
 
     while(wait(NULL) > 0);
+
 }
 
+static void *test3thread1(void *args)
+{
+    // thread 1:
+        // does a write, and then while(1) { read(); }
+    int fd = *((int *) args), count = 0;
+    char buffer[32];
 
+    printf("fd from thread1 %d\n", fd);
 
+    printf("%ld\n", write(fd, "test string", 11));
+    while(1) {
+        sleep(0.05);
+        read(fd, buffer, 11);
+        printf("Thread1: %s\n", buffer);
+        if (count++ > 200) break;
+    }
+
+    pthread_exit(NULL);
+}
+
+static void *test3thread2(void *args)
+{
+
+    // thread 2:
+        // while(1) { ioctl(to mode1); ioctl(to mode2); }
+    int fd = *((int *) args), count = 0;
+
+        printf("fd from thread2 %d\n", fd);
+    while(1) {
+        ioctl(fd, E2_IOCMODE2);
+        sleep(0.05);
+        ioctl(fd, E2_IOCMODE1);
+        if (count++ > 200) break;
+    }
+
+    pthread_exit(NULL);
+}

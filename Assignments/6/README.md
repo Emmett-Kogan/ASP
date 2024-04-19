@@ -3,12 +3,14 @@
 1. Emmett Kogan
 
 ## Build instructions
+1. Use `make` to build the device driver. This will emit a kernel object file, `Assignment6Code.ko`, the needs to be loaded via `sudo insmod Assignment6Code.ko`. Then use `make app` to build the test executable, which takes a single command line arguement to specify which test you'd like to run. Between each test case, the device should be reloaded so that state from a previous test does not effect the following test (e.g. if you just caused deadlock, the state of the semaphores/wait_queues may not be obvious, and the tests were designed to initialize the state required anywyas).
+2. I made a script, `test.sh`, to run each of the test cases, however, I tried a bunch of different ways to kill the deadlocked processes, and it works for some of the tests, but for test 2 I was having issues killing the processes I spawned... so uh, probably not best to use the script this time around.
 
 ## Test Cases
 1. Test case 1 causes a deadlock using two processes and calling `e2_open()` and `e2_ioctl`. Let's say that process A opens the device (in `MODE1`). Then process B attempts `e2_open()`, and gets blocked when trying to aquire `sem2`, note that it would have already incremented `count1` however, so the current `count1` value is 2. Then if process A attempts to change the mode to `MODE2`, it will be waiting for `count1 > 1` to be false, which could only happen if process B releases (which is impossible). Therefore, this is deadlock. (The deadlock is techincally on the `down_interuptible()` on line 64 in `e2_open()`, and the `wait_event_interruptible()` in the `E2_IOCMODE2` case in `e2_ioctl()` on line 183)
 2. Similairly to test case 1, in test case 2, if process A opens the device and changes the mode to `MODE2`, then process B opens the device. If both process A and process B then try to call `e2_ioctl()` and change to `MODE1`, then they will also deadlock (both need `count2 > 1` to be false, however, both can no longer close the device in order to change count2). In this case, the deadlock would occur with the `wait_event_interruptible()` on line 183. 
-3. 
-4. 
+3. Test case 3 attempts to cause a deadlock by having a single process open the device, then spawn two threads. One of which writes a message to the ramdisk and reads it a lot, while another switches between modes to see if that causes a deadlock. Trying to see if the ioctl has a circular dependency with read.
+4. Test case 4 does the same thing as 3, except there are two processes instead of two threads, and instead of toggling the mode one device is opening and closing the device in a loop.
 
 ## Race Condition Code Review
 1. Let's say we have a process that opened the device with two threads in MODE1. Each thread (A & B) calls `e2_write()` for n bytes of data. A can run first, but be blocked after releasing the access control `sem1` but prior to calling `copy_from_user()`. While blocked, B can now both pick up, release and write to the ramdisk and "update" the file offset (see other notes). Once returned, A can then start again, and overwrite whatever B just wrote, so the final state of the buffer would be the message A wrote instead of the message B wrote, even though B was called second.T

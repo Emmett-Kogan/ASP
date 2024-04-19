@@ -8,6 +8,8 @@ for i in {1..4}; do
 
     if [[ $? -eq 0 ]]; then
         echo "Timed out after 10s, most likely because of deadlock :)"
+    else
+        echo "Probably not deadlocked"
     fi
     sudo rmmod Assignment6Code
 done
