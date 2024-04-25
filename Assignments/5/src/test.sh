@@ -1,7 +1,7 @@
 sizes=(0 11 0 52 0)
 
-make
-make app
+make >/dev/null 2>/dev/null
+make app >/dev/null 2>/dev/null
 
 for i in {0..4}; do
     if [[ ${sizes[$i]} -ne 0 ]]; then
@@ -10,7 +10,7 @@ for i in {0..4}; do
         sudo insmod char_driver.ko
     fi
 
-    sudo ./devuserapp testfiles/input$i.txt >temp.txt
+    sudo ./devuserapp testfiles/input$i.txt >temp.txt 2>/dev/null
     diff testfiles/output$i.txt temp.txt
 
     if [[ $? -ne 0 ]]; then

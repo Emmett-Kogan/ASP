@@ -16,3 +16,5 @@ Participation Log:
     3/6 - Asked about whether the function table of handler hooks is also copied during a fork, and if they'd still work given the layout of the new process was the same as the original
     3/27 - Asked about gcc-12 warning during activity 3
     4/5 - Emailed about possible mistake with assingnment 5 test cases (SEEK_CUR and SEEK_END being swapped)
+    4/18 - Went to office hours to ask about assignment 6
+    I think I forgot to add a conversation we had during another in class activity, but for each one I remember talking to you about something

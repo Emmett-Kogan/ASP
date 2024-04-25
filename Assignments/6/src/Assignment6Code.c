@@ -249,7 +249,7 @@ static int __init my_init (void)
     cl = class_create(MYDEV_NAME);
 
     // Dynamically allocating 1 struct... actually why. Not to mention 
-    // Like why not just do something like this for fucks sake
+    // Like why not just do something like this
     // dev->ramdisk = (dev = kcalloc(sizeof(struct e2_dev)+ramdisk_size, GFP_KERNEL))+sizeof(struct e2_dev);
 
     // Ok so this is setting up the device structure
