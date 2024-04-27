@@ -94,11 +94,12 @@ struct usb_kbd {
 
 	spinlock_t leds_lock;
 	bool led_urb_submitted;
-	int mode;
+	int mode, temp_flag;
 };
 
 static void usb_kbd_irq(struct urb *urb)
 {
+	pr_info("irq called\n");
 	struct usb_kbd *kbd = urb->context;
 	int i;
 
@@ -118,8 +119,11 @@ static void usb_kbd_irq(struct urb *urb)
 		input_report_key(kbd->dev, usb_kbd_keycode[i + 224], (kbd->new[0] >> i) & 1);
 
 	for (i = 2; i < 8; i++) {
-
+		
+		
+		
 		if (kbd->old[i] > 3 && memscan(kbd->new + 2, kbd->old[i], 6) == kbd->new + 8) {
+			pr_info("Key released: %d\n", usb_kbd_keycode[kbd->old[i]]);
 			if (usb_kbd_keycode[kbd->old[i]])
 				input_report_key(kbd->dev, usb_kbd_keycode[kbd->old[i]], 0);
 			else
@@ -129,6 +133,14 @@ static void usb_kbd_irq(struct urb *urb)
 		}
 
 		if (kbd->new[i] > 3 && memscan(kbd->old + 2, kbd->new[i], 6) == kbd->old + 8) {
+			pr_info("Key pressed: %d\n", usb_kbd_keycode[kbd->old[i]]);
+			
+			// HERE
+			if (usb_kbd_keycode[kbd->old[i]] == 69) {
+				kbd->temp_flag = 1;
+
+			}
+			
 			if (usb_kbd_keycode[kbd->new[i]])
 				input_report_key(kbd->dev, usb_kbd_keycode[kbd->new[i]], 1);
 			else
@@ -171,35 +183,37 @@ static int usb_kbd_event(struct input_dev *dev, unsigned int type,
 	pr_info("Caps lock bit: %d\n", !!test_bit(LED_CAPSL,   dev->led) << 1);
 	pr_info("Num lock bit:  %d\n",  !!test_bit(LED_NUML,    dev->led));
 
-	switch(kbd->mode) {
-    case 1:
-        // If capslock LED is off and not turning on AND numluck led is tunring on
-		// if ((kbd->newleds & (BIT(1) | BIT(0))) == 0x01) {
-		if (((kbd->newleds & 0x01) != 0) && ((kbd->newleds & 0x02) == 0)) {
-			pr_info("kbd driver switched to mode2\n");
-            kbd->mode = 2;
-            kbd->newleds |= 0x02; // BIT(1); // (BIT(1) | BIT(0));		// turn on caps and num lock leds
-		}
+	if (kbd->temp_flag) {
+		kbd->newleds &= ~(0x01);  // turn off numlock led
+		kbd->newleds ^= 0x02;	   // togle caps lock led
+		kbd->mode = 1;
+	} else {
+		switch(kbd->mode) {
+		case 1:
+			// If capslock LED is off and not turning on AND numluck led is tunring on
+			if (((kbd->newleds & 0x01) != 0) && ((kbd->newleds & 0x02) == 0)) {
+				pr_info("kbd driver switched to mode2\n");
+				kbd->mode = 2;
+				kbd->newleds |= 0x02; // BIT(1); // (BIT(1) | BIT(0));		// turn on caps and num lock leds
+			}
 
-        break;
-    case 2:
-        // Need to update the newleds every time and check for condition to switch to mode1
-        // if (!(kbd->newleds & BIT(0))) {
-		if ((kbd->newleds & 0x01) == 0) {
-			pr_info("kbd driver switched to mode1\n");
-			kbd->mode = 1;
-		} else {
-			// kbd->newleds |= BIT(0);	// just in case
-			kbd->newleds ^= 0x02; // BIT(1);	// flip caps lock bit
-		}
+			break;
+		case 2:
+			// Need to update the newleds every time and check for condition to switch to mode1
+			if ((kbd->newleds & 0x01) == 0) {
+				pr_info("kbd driver switched to mode1\n");
+				kbd->mode = 1;
+			} else {
+				kbd->newleds ^= 0x02;	// flip caps lock bit
+			}
 
-        break;
-    default:
-        pr_info("Error: Bad mode value\n");
-        break;
+			break;
+		default:
+			pr_info("Error: Bad mode value\n");
+			break;
+		}
 	}
-
-
+	kbd->temp_flag = 0;
 
 	if (kbd->led_urb_submitted){
 		spin_unlock_irqrestore(&kbd->leds_lock, flags);
@@ -226,6 +240,7 @@ static int usb_kbd_event(struct input_dev *dev, unsigned int type,
 
 static void usb_kbd_led(struct urb *urb)
 {
+	pr_info("led called\n");
 	unsigned long flags;
 	struct usb_kbd *kbd = urb->context;
 
@@ -330,7 +345,9 @@ static int usb_kbd_probe(struct usb_interface *iface,
 	kbd->dev = input_dev;
 	spin_lock_init(&kbd->leds_lock);
 
+	pr_info("kbd driver switched to mode1\n");
 	kbd->mode = 1;
+	kbd->temp_flag = 0;
 
 	if (dev->manufacturer)
 		strscpy(kbd->name, dev->manufacturer, sizeof(kbd->name));

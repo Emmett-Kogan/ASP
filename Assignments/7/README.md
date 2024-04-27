@@ -18,4 +18,4 @@ In `usb_kbd_event` and `usb_kbd_led`, adding state I guess? Or a bit of code in 
 
 For switching only on numlock press, might need to check if it generates events at all when a key is pressed. If no event is generated, then who cares, but if one is and the LED state is the same then I need to look for a way to figure out why the event was generated to see if there is a way to check if caps lock or if num lock was pressed
 
-
+For the idea of switching from MODE2 to MODE1 when num lock is pressed, this is impossible because, when in MODE2, NUML led is on. If the LED is on, and you press NUML (or any key related to any LED), then, the first interrupt (for the press) has a context of 0, so there is no way to distinguish someone pressing say caps lock or num lock, if both LEds are on. When the button is then released, THEN capslock would have an interrupt where the key code is 58, and numlock would have an interrupt of key code 69. Since they are the same on press, then we can't exit MODE2 until release, therefore instructions bad.
