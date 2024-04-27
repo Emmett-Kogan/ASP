@@ -1,21 +1,21 @@
-# Assignment 7
+# Assignment 7b
 ## Contributor(s)
 1. Emmett Kogan
 
 ## Build Instructions
+Method 1 (manual):
+1. Run `make` to build the driver
+2. Install it with `sudo insmod usbkbd.ko` (you can uninstall old versions with `sudo rmmod usbkbd`
+3. Now you need to figure out which usb device it is, see either the DDUSBkeyboard slides or Method 2 step 3
+4. Now you need to unbind whatever driver it was associated with and bind it to the driver you just installed (using `echo -n <usb dev no>` to `/sys/bus/usb/drivers/usbhid/unbind` and `/sys/bus/usb/drivers/usbkbd/bind`)
+5. The keyboard driver is now active, note that if the condition to switch to mode2 is already met, while it was initialized to mode1 it will switch to mode2 so... be aware and check with `sudo dmesg -<c or T>`
 
-    1. run `make` and uninstall, then reinstall the module
-    2. Unplug and replug the keyboard
-    3. remove hardware from virt-manager, and re-add it
-    4. If this has worked, `ls -l /sys/bus/usb/devices` should show a few more devices, with "1-4:1.0" being listed
-    5. run the script and spam dmesg
-
-
+Method 2 (script):
+1. Give `test.sh` permission to  execute: `chmod +x test.sh` 
+2. Run `sudo ./test.sh` and follow the prompt for when to plug in/forward the keyboard with virt box
+3. It's possible that the device id/number is different, in that case, use `ls -l /sys/bus/usb/devices` before and after enabling the device, and it will be "x-y:1.0" of whatever appeared
 
 ## Notes
-1. https://github.com/torvalds/linux/blob/master/drivers/hid/usbhid/usbkbd.c#L190
-In `usb_kbd_event` and `usb_kbd_led`, adding state I guess? Or a bit of code in event that checks for the key to toggle modes, and toggle modes, as well as checking for the led thing, and then toggling the LED as specified in the doc. Could probably just add a static variable inside one of the functions.
+[I modified this file](https://github.com/torvalds/linux/blob/master/drivers/hid/usbhid/usbkbd.c#L190)
+[Here is a backup demo video](https://youtu.be/Fo7RicjQOOk)
 
-For switching only on numlock press, might need to check if it generates events at all when a key is pressed. If no event is generated, then who cares, but if one is and the LED state is the same then I need to look for a way to figure out why the event was generated to see if there is a way to check if caps lock or if num lock was pressed
-
-For the idea of switching from MODE2 to MODE1 when num lock is pressed, this is impossible because, when in MODE2, NUML led is on. If the LED is on, and you press NUML (or any key related to any LED), then, the first interrupt (for the press) has a context of 0, so there is no way to distinguish someone pressing say caps lock or num lock, if both LEds are on. When the button is then released, THEN capslock would have an interrupt where the key code is 58, and numlock would have an interrupt of key code 69. Since they are the same on press, then we can't exit MODE2 until release, therefore instructions bad.
