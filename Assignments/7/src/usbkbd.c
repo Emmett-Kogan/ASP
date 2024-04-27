@@ -106,7 +106,6 @@ struct usb_kbd {
 
 static void usb_kbd_irq(struct urb *urb)
 {
-	pr_info("irq called\n");
 	struct usb_kbd *kbd = urb->context;
 	int i;
 
