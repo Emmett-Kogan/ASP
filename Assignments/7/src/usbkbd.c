@@ -28,6 +28,12 @@
 #define DRIVER_AUTHOR "Vojtech Pavlik <vojtech@ucw.cz>"
 #define DRIVER_DESC "USB HID Boot Protocol keyboard driver"
 
+// Added defines
+#define MODE1 0
+#define MODE2 1
+#define CLB 0x02
+#define NLB 0x01
+
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
@@ -76,6 +82,7 @@ static const unsigned char usb_kbd_keycode[256] = {
  * @led_urb_submitted: indicates whether @led is in progress, i.e. it has been
  *		submitted and its completion handler has not returned yet
  *		without	resubmitting @led
+ * @mode:	I added this for the mode of the thing (MODE1 and MODE2)
  */
 struct usb_kbd {
 	struct input_dev *dev;
@@ -94,7 +101,7 @@ struct usb_kbd {
 
 	spinlock_t leds_lock;
 	bool led_urb_submitted;
-	int mode, temp_flag;
+	int mode;
 };
 
 static void usb_kbd_irq(struct urb *urb)
@@ -119,11 +126,7 @@ static void usb_kbd_irq(struct urb *urb)
 		input_report_key(kbd->dev, usb_kbd_keycode[i + 224], (kbd->new[0] >> i) & 1);
 
 	for (i = 2; i < 8; i++) {
-		
-		
-		
 		if (kbd->old[i] > 3 && memscan(kbd->new + 2, kbd->old[i], 6) == kbd->new + 8) {
-			pr_info("Key released: %d\n", usb_kbd_keycode[kbd->old[i]]);
 			if (usb_kbd_keycode[kbd->old[i]])
 				input_report_key(kbd->dev, usb_kbd_keycode[kbd->old[i]], 0);
 			else
@@ -132,15 +135,7 @@ static void usb_kbd_irq(struct urb *urb)
 					 kbd->old[i]);
 		}
 
-		if (kbd->new[i] > 3 && memscan(kbd->old + 2, kbd->new[i], 6) == kbd->old + 8) {
-			pr_info("Key pressed: %d\n", usb_kbd_keycode[kbd->old[i]]);
-			
-			// HERE
-			if (usb_kbd_keycode[kbd->old[i]] == 69) {
-				kbd->temp_flag = 1;
-
-			}
-			
+		if (kbd->new[i] > 3 && memscan(kbd->old + 2, kbd->new[i], 6) == kbd->old + 8) {		
 			if (usb_kbd_keycode[kbd->new[i]])
 				input_report_key(kbd->dev, usb_kbd_keycode[kbd->new[i]], 1);
 			else
@@ -176,44 +171,31 @@ static int usb_kbd_event(struct input_dev *dev, unsigned int type,
 		       (!!test_bit(LED_SCROLLL, dev->led) << 2) | (!!test_bit(LED_CAPSL,   dev->led) << 1) |
 		       (!!test_bit(LED_NUML,    dev->led));
 
-
-	
-	pr_info("usb_kbd_event() called!\n");
-	pr_info("mode -- %d\n", kbd->mode);
-	pr_info("Caps lock bit: %d\n", !!test_bit(LED_CAPSL,   dev->led) << 1);
-	pr_info("Num lock bit:  %d\n",  !!test_bit(LED_NUML,    dev->led));
-
-	if (kbd->temp_flag) {
-		kbd->newleds &= ~(0x01);  // turn off numlock led
-		kbd->newleds ^= 0x02;	   // togle caps lock led
-		kbd->mode = 1;
-	} else {
-		switch(kbd->mode) {
-		case 1:
-			// If capslock LED is off and not turning on AND numluck led is tunring on
-			if (((kbd->newleds & 0x01) != 0) && ((kbd->newleds & 0x02) == 0)) {
-				pr_info("kbd driver switched to mode2\n");
-				kbd->mode = 2;
-				kbd->newleds |= 0x02; // BIT(1); // (BIT(1) | BIT(0));		// turn on caps and num lock leds
-			}
-
-			break;
-		case 2:
-			// Need to update the newleds every time and check for condition to switch to mode1
-			if ((kbd->newleds & 0x01) == 0) {
-				pr_info("kbd driver switched to mode1\n");
-				kbd->mode = 1;
-			} else {
-				kbd->newleds ^= 0x02;	// flip caps lock bit
-			}
-
-			break;
-		default:
-			pr_info("Error: Bad mode value\n");
-			break;
+	switch(kbd->mode) {
+	case MODE1:
+		// If capslock LED is off and not turning on AND numluck led is tunring on
+		if ((kbd->newleds & NLB) && !(kbd->newleds & CLB)) {
+			// Switch mode and turn caps lock LED on
+			pr_info("kbd driver switched to MODE2\n");
+			kbd->mode = MODE2;
+			kbd->newleds |= CLB;
 		}
+
+		break;
+	case MODE2:
+		// If numlock is pressed, switch to mode 1
+		if (!(kbd->newleds & NLB)) {
+			pr_info("kbd driver switched to MODE1\n");
+			kbd->mode = MODE1;
+		} else {
+			kbd->newleds ^= CLB;	// otherwise flip caps lock bit
+		}
+
+		break;
+	default:
+		pr_info("Error: Bad mode value\n");
+		break;
 	}
-	kbd->temp_flag = 0;
 
 	if (kbd->led_urb_submitted){
 		spin_unlock_irqrestore(&kbd->leds_lock, flags);
@@ -240,7 +222,6 @@ static int usb_kbd_event(struct input_dev *dev, unsigned int type,
 
 static void usb_kbd_led(struct urb *urb)
 {
-	pr_info("led called\n");
 	unsigned long flags;
 	struct usb_kbd *kbd = urb->context;
 
@@ -340,14 +321,13 @@ static int usb_kbd_probe(struct usb_interface *iface,
 
 	if (usb_kbd_alloc_mem(dev, kbd))
 		goto fail2;
-
+		
 	kbd->usbdev = dev;
 	kbd->dev = input_dev;
 	spin_lock_init(&kbd->leds_lock);
 
 	pr_info("kbd driver switched to mode1\n");
-	kbd->mode = 1;
-	kbd->temp_flag = 0;
+	kbd->mode = MODE1;
 
 	if (dev->manufacturer)
 		strscpy(kbd->name, dev->manufacturer, sizeof(kbd->name));
