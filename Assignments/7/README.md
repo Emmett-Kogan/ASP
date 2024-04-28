@@ -16,6 +16,6 @@ Method 2 (script):
 3. It's possible that the device id/number is different, in that case, use `ls -l /sys/bus/usb/devices` before and after enabling the device, and it will be "x-y:1.0" of whatever appeared
 
 ## Notes
-[I modified this file](https://github.com/torvalds/linux/blob/master/drivers/hid/usbhid/usbkbd.c#L190)
+[I modified this file](https://github.com/torvalds/linux/blob/master/drivers/hid/usbhid/usbkbd.c#L190) \
 [Here is a backup demo video](https://youtu.be/Fo7RicjQOOk)
 
